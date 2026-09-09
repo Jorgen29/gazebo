@@ -48,51 +48,7 @@
     selectedCalendarDate: '2026-09-15',
     monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
 
-    // Reserved Schedules (5 timeslots per space across dates)
-    reservedSchedule: {
-        'grand-hall': [
-            { date: '2026-09-15', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Wedding Banquet)' },
-            { date: '2026-09-18', start: '10:00', end: '14:00', label: '10:00 AM - 2:00 PM (Corporate Summit)' },
-            { date: '2026-09-22', start: '18:00', end: '22:00', label: '6:00 PM - 10:00 PM (Gala Reception)' },
-            { date: '2026-09-25', start: '13:00', end: '17:00', label: '1:00 PM - 5:00 PM (Debut Celebration)' },
-            { date: '2026-09-28', start: '09:00', end: '16:00', label: '9:00 AM - 4:00 PM (Seminar Workshop)' }
-        ],
-        'grotto': [
-            { date: '2026-09-15', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Garden Wedding Ceremony)' },
-            { date: '2026-09-17', start: '16:00', end: '19:00', label: '4:00 PM - 7:00 PM (Sunset Vow Renewal)' },
-            { date: '2026-09-20', start: '18:00', end: '22:00', label: '6:00 PM - 10:00 PM (Acoustic Night)' },
-            { date: '2026-09-24', start: '09:00', end: '12:00', label: '9:00 AM - 12:00 PM (Photoshoot Booking)' },
-            { date: '2026-09-29', start: '14:00', end: '18:00', label: '2:00 PM - 6:00 PM (Engagement Party)' }
-        ],
-        'pavilion': [
-            { date: '2026-09-15', start: '12:00', end: '16:00', label: '12:00 PM - 4:00 PM (Birthday Bash)' },
-            { date: '2026-09-19', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Morning Brunch)' },
-            { date: '2026-09-21', start: '15:00', end: '20:00', label: '3:00 PM - 8:00 PM (Anniversary Event)' },
-            { date: '2026-09-26', start: '10:00', end: '15:00', label: '10:00 AM - 3:00 PM (Family Reunion)' },
-            { date: '2026-09-30', start: '17:00', end: '22:00', label: '5:00 PM - 10:00 PM (Dinner & Dance)' }
-        ],
-        'glass-house': [
-            { date: '2026-09-16', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Botanical High Tea)' },
-            { date: '2026-09-19', start: '17:00', end: '21:00', label: '5:00 PM - 9:00 PM (VIP Product Launch)' },
-            { date: '2026-09-23', start: '11:00', end: '15:00', label: '11:00 AM - 3:00 PM (Art Exhibition)' },
-            { date: '2026-09-27', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Corporate Breakfast)' },
-            { date: '2026-09-29', start: '18:00', end: '22:00', label: '6:00 PM - 10:00 PM (Private Dinner)' }
-        ],
-        'poolside': [
-            { date: '2026-09-15', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Poolside Barbecue)' },
-            { date: '2026-09-18', start: '16:00', end: '21:00', label: '4:00 PM - 9:00 PM (Sunset Cocktail Party)' },
-            { date: '2026-09-22', start: '10:00', end: '14:00', label: '10:00 AM - 2:00 PM (Kiddie Party)' },
-            { date: '2026-09-25', start: '18:00', end: '23:00', label: '6:00 PM - 11:00 PM (Night Pool Lounge)' },
-            { date: '2026-09-28', start: '12:00', end: '16:00', label: '12:00 PM - 4:00 PM (Casual Gathering)' }
-        ],
-        'surroundings': [
-            { date: '2026-09-16', start: '09:00', end: '17:00', label: '9:00 AM - 5:00 PM (Outdoor Team Building)' },
-            { date: '2026-09-20', start: '08:00', end: '12:00', label: '8:00 AM - 12:00 PM (Community Fair)' },
-            { date: '2026-09-22', start: '08:00', end: '17:00', label: '8:00 AM - 5:00 PM (Marquee Setup Event)' },
-            { date: '2026-09-27', start: '15:00', end: '21:00', label: '3:00 PM - 9:00 PM (Garden Concert)' },
-            { date: '2026-09-30', start: '10:00', end: '18:00', label: '10:00 AM - 6:00 PM (Commercial Shoot)' }
-        ]
-    },
+    reservedSchedule: @js($reservedSchedule ?? []),
 
     spaces: @js($spaces ?? []),
 

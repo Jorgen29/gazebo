@@ -60,4 +60,80 @@ class PublicVenueListTest extends TestCase
         $response->assertSee('Database Venue');
         $response->assertSee('Live venue from the database');
     }
+
+    public function test_selected_date_schedule_only_shows_approved_inquiries(): void
+    {
+        $venue = Venue::create([
+            'title' => 'Approved-Only Venue',
+            'description' => 'It should only list approved bookings',
+            'capacity' => 120,
+            'price_per_hour' => 3500,
+            'image' => 'venues/approved-only.jpg',
+            'showcase_images' => ['venues/showcase/approved-1.jpg'],
+            'features' => ['Outdoor setup'],
+            'is_active' => true,
+        ]);
+
+        \App\Models\Inquiry::create([
+            'venue_id' => (string) $venue->id,
+            'venue_title' => $venue->title,
+            'booking_date' => '2026-09-15',
+            'start_time' => '09:00:00',
+            'end_time' => '12:00:00',
+            'full_name' => 'Approved Guest',
+            'email' => 'approved@example.com',
+            'email_contact' => '09170000000',
+            'status' => 'approved',
+        ]);
+
+        \App\Models\Inquiry::create([
+            'venue_id' => (string) $venue->id,
+            'venue_title' => $venue->title,
+            'booking_date' => '2026-09-15',
+            'start_time' => '13:00:00',
+            'end_time' => '15:00:00',
+            'full_name' => 'Pending Guest',
+            'email' => 'pending@example.com',
+            'email_contact' => '09170000001',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->get('/book?space=' . $venue->id . '&date=2026-09-15');
+
+        $response->assertOk();
+        $response->assertSee('Approved Guest');
+        $response->assertDontSee('Pending Guest');
+    }
+
+    public function test_inquire_page_calendar_reflects_approved_inquiries_from_database(): void
+    {
+        $venue = Venue::create([
+            'title' => 'Calendar Venue',
+            'description' => 'Should show in the modal calendar',
+            'capacity' => 200,
+            'price_per_hour' => 5200,
+            'image' => 'venues/calendar.jpg',
+            'showcase_images' => ['venues/showcase/calendar-1.jpg'],
+            'features' => ['Stage'],
+            'is_active' => true,
+        ]);
+
+        \App\Models\Inquiry::create([
+            'venue_id' => (string) $venue->id,
+            'venue_title' => $venue->title,
+            'booking_date' => '2026-09-15',
+            'start_time' => '10:00:00',
+            'end_time' => '14:00:00',
+            'full_name' => 'Calendar Guest',
+            'email' => 'calendar@example.com',
+            'email_contact' => '09170000002',
+            'status' => 'approved',
+        ]);
+
+        $response = $this->get('/inquire');
+
+        $response->assertOk();
+        $response->assertSee('Calendar Guest');
+        $response->assertSee('2026-09-15');
+    }
 }

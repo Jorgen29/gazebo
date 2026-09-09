@@ -208,7 +208,29 @@ class VenueBookingController extends Controller
             ->values()
             ->all();
 
-        return view('inquire', compact('spaces'));
+        $reservedSchedule = Inquiry::query()
+            ->where('status', 'approved')
+            ->get()
+            ->groupBy('venue_id')
+            ->map(function ($inquiries) {
+                return $inquiries->map(function ($item) {
+                    $startFormatted = Carbon::parse($item->start_time)->format('g:i A');
+                    $endFormatted = Carbon::parse($item->end_time)->format('g:i A');
+
+                    return [
+                        'date' => Carbon::parse($item->booking_date)->format('Y-m-d'),
+                        'start' => Carbon::parse($item->start_time)->format('H:i'),
+                        'end' => Carbon::parse($item->end_time)->format('H:i'),
+                        'label' => "{$startFormatted} - {$endFormatted} ({$item->full_name})",
+                    ];
+                })->values()->all();
+            })
+            ->mapWithKeys(function ($entries, $key) {
+                return [(string) $key => $entries];
+            })
+            ->all();
+
+        return view('inquire', compact('spaces', 'reservedSchedule'));
     }
 
     public function index()
@@ -248,10 +270,9 @@ class VenueBookingController extends Controller
         // 1. Get static/hardcoded schedules
         $reservedSchedules = $this->getReservedSchedules();
 
-        // 2. Query approved inquiries from the database
-        // (If you want pending requests to show as well, remove ->where('status', 'approved'))
+        // 2. Query only approved inquiries for the selected venue.
         $dbInquiries = Inquiry::where('venue_id', $spaceId)
-            ->whereIn('status', ['approved', 'pending']) // Includes approved & pending requests
+            ->where('status', 'approved')
             ->get()
             ->map(function ($item) {
                 $startFormatted = Carbon::parse($item->start_time)->format('g:i A');
@@ -259,8 +280,8 @@ class VenueBookingController extends Controller
 
                 return [
                     'date'  => Carbon::parse($item->booking_date)->format('Y-m-d'),
-                    'start' => Carbon::parse($item->start_time)->format('H:i'), // Format: '10:00'
-                    'end'   => Carbon::parse($item->end_time)->format('H:i'),   // Format: '14:00'
+                    'start' => Carbon::parse($item->start_time)->format('H:i'),
+                    'end'   => Carbon::parse($item->end_time)->format('H:i'),
                     'label' => "{$startFormatted} - {$endFormatted} ({$item->full_name})"
                 ];
             })

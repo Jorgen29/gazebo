@@ -25,7 +25,58 @@
     </style>
 </head>
 
-<body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans">
+<body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans" x-data="{
+    detailModalOpen: false,
+    activeSpace: null,
+    activeImageIndex: 0,
+    modalMonth: new Date().getMonth(),
+    modalYear: new Date().getFullYear(),
+    selectedCalendarDate: new Date().toISOString().split('T')[0],
+    todayStr: new Date().toISOString().split('T')[0],
+    monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    spaces: @js($spaces ?? []),
+    reservedSchedule: @js($reservedSchedule ?? []),
+
+    get modalCalendarDays() {
+        let date = new Date(this.modalYear, this.modalMonth, 1);
+        let days = [];
+        let firstDayIndex = date.getDay();
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            days.push({ day: '', dateStr: null, isCurrentMonth: false, isPast: true });
+        }
+
+        let lastDay = new Date(this.modalYear, this.modalMonth + 1, 0).getDate();
+        for (let i = 1; i <= lastDay; i++) {
+            let monthStr = String(this.modalMonth + 1).padStart(2, '0');
+            let dayStr = String(i).padStart(2, '0');
+            let dateStr = `${this.modalYear}-${monthStr}-${dayStr}`;
+            let isPast = dateStr < this.todayStr;
+            let bookings = this.activeSpace ? (this.reservedSchedule[this.activeSpace.id] || []).filter(b => b.date === dateStr) : [];
+
+            days.push({ day: i, dateStr: dateStr, isCurrentMonth: true, isPast: isPast, bookings: bookings, isBooked: bookings.length > 0 });
+        }
+        return days;
+    },
+
+    get activeSelectedDateBookings() {
+        if (!this.activeSpace || !this.selectedCalendarDate) return [];
+        return (this.reservedSchedule[this.activeSpace.id] || []).filter(b => b.date === this.selectedCalendarDate);
+    },
+
+    openDetailModal(space) {
+        this.activeSpace = space;
+        this.activeImageIndex = 0;
+        this.selectedCalendarDate = this.todayStr;
+        this.detailModalOpen = true;
+    },
+
+    proceedToNewPage() {
+        let dateParam = this.selectedCalendarDate || this.todayStr;
+        let spaceParam = this.activeSpace ? this.activeSpace.id : '';
+        window.location.href = `{{ route('venue.book') }}?space=${spaceParam}&date=${dateParam}`;
+    }
+}">
 
     <!-- Header Component -->
     <x-header />
@@ -130,53 +181,176 @@
     <!-- 3. Spaces Showcase Grid -->
     <section id="spaces" class="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-            @php
-                $spaces = [
-                    [
-                        'title' => 'GROTTO',
-                        'subtitle' => "A PEACEFUL SPACE FOR REFLECTION\nAND SPECIAL MOMENTS",
-                        'image' =>
-                            'https://images.unsplash.com/photo-1545232979-fbf59202c396?auto=format&fit=crop&w=600&q=80',
-                    ],
-                    [
-                        'title' => 'ELEGANT HALLS',
-                        'subtitle' => 'A VERSATILE SPACE FOR ANY EVENT',
-                        'image' =>
-                            'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=600&q=80',
-                    ],
-                    [
-                        'title' => 'BEAUTIFUL SURROUNDINGS',
-                        'subtitle' => "A RELAXING ATMOSPHERE FOR\nUNFORGETTABLE MEMORIES",
-                        'image' =>
-                            'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=600&q=80',
-                    ],
-                    [
-                        'title' => 'FLEXIBLE SPACES',
-                        'subtitle' => "ADAPTABLE TO BRING YOUR\nVISION TO LIFE",
-                        'image' =>
-                            'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
-                    ],
-                ];
-            @endphp
-
             @foreach ($spaces as $space)
-                <div
-                    class="group flex flex-col bg-white overflow-hidden shadow-sm border border-gray-200/80 rounded-sm">
+                <button type="button" @click="openDetailModal({{ Js::from($space) }})"
+                    class="group flex flex-col bg-white overflow-hidden shadow-sm border border-gray-200/80 rounded-sm text-left hover:shadow-md transition-all duration-300 overflow-hidden focus:outline-none">
                     <div class="overflow-hidden h-64 sm:h-72">
-                        <img src="{{ $space['image'] }}" alt="{{ $space['title'] }}"
+                        <img src="{{ $space['gallery'][0] ?? ($space['image'] ?? '') }}" alt="{{ $space['title'] }}"
                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                     </div>
-                    <div class="p-5 text-center flex-1 flex flex-col justify-center bg-[#FBF9F5]">
+                    <div class="p-5 flex-1 flex flex-col justify-center bg-[#FBF9F5]">
                         <h4 class="font-serif text-base tracking-[0.15em] text-[#3b4d3c] font-semibold uppercase">
-                            {{ $space['title'] }}</h4>
+                            {{ $space['title'] }}
+                        </h4>
                         <p
-                            class="text-[8.5px] tracking-[0.2em] text-gray-500 mt-1 font-medium leading-relaxed whitespace-pre-line">
-                            {{ $space['subtitle'] }}</p>
+                            class="text-[8.5px] tracking-[0.2em] text-gray-500 mt-2 font-medium leading-relaxed line-clamp-3">
+                            {{ Str::limit($space['description'], 120) }}
+                        </p>
                     </div>
-                </div>
+                </button>
             @endforeach
         </div>
     </section>
+
+    <div x-show="detailModalOpen" x-cloak
+        class="fixed inset-0 z-[200] overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+        <div @click.away="detailModalOpen = false"
+            class="relative bg-white rounded-sm max-w-5xl w-full overflow-hidden shadow-2xl space-y-0 my-auto">
+            <div class="p-4 sm:p-5 bg-[#1C3627] text-white flex items-center justify-between">
+                <div>
+                    <span
+                        class="text-[9px] uppercase tracking-[0.2em] text-[#B89462] font-semibold block">SPECIFICATIONS
+                        & AVAILABILITY</span>
+                    <h3 class="font-serif text-xl sm:text-2xl font-medium" x-text="activeSpace?.title"></h3>
+                </div>
+                <button @click="detailModalOpen = false"
+                    class="text-white hover:text-[#B89462] text-2xl font-bold leading-none">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 max-h-[80vh] overflow-y-auto">
+                <div class="lg:col-span-7 p-5 sm:p-6 space-y-6 border-b lg:border-b-0 lg:border-r border-gray-200">
+                    <div class="space-y-2">
+                        <p class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Showcase Photos</p>
+                        <div class="relative h-64 sm:h-72 bg-black rounded-sm overflow-hidden">
+                            <template x-if="activeSpace">
+                                <img :src="activeSpace.gallery[activeImageIndex]" class="w-full h-full object-cover">
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-2 overflow-x-auto pt-1">
+                            <template x-if="activeSpace">
+                                <template x-for="(img, idx) in activeSpace.gallery" :key="idx">
+                                    <button @click="activeImageIndex = idx"
+                                        :class="activeImageIndex === idx ? 'ring-2 ring-[#1C3627]' : 'opacity-60'"
+                                        class="w-16 h-12 rounded-sm overflow-hidden shrink-0">
+                                        <img :src="img" class="w-full h-full object-cover">
+                                    </button>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-[#1C3627]" x-text="activeSpace?.capacity"></span>
+                            <span class="text-sm font-bold text-[#B89462]" x-text="activeSpace?.price"></span>
+                        </div>
+                        <p class="text-xs text-gray-600 font-light leading-relaxed" x-text="activeSpace?.description">
+                        </p>
+                    </div>
+
+                    <div class="space-y-3 pt-4 border-t border-gray-100">
+                        <h4 class="text-[11px] uppercase tracking-wider font-semibold text-[#1C3627]">Included Amenities
+                        </h4>
+                        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
+                            <template x-if="activeSpace">
+                                <template x-for="feature in activeSpace.inclusions" :key="feature">
+                                    <li class="flex items-center gap-2 bg-[#FBF9F5] p-2 rounded border border-gray-100">
+                                        <span class="text-[#B89462] font-bold">✓</span>
+                                        <span x-text="feature"></span>
+                                    </li>
+                                </template>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 p-5 sm:p-6 bg-[#FBF9F5] flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <h4 class="text-xs font-semibold uppercase text-[#1C3627]">Select Date to View Schedule</h4>
+                            <div class="flex items-center space-x-1">
+                                <button
+                                    @click="if(modalMonth === 0){ modalMonth=11; modalYear--; }else{ modalMonth--; }"
+                                    class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&larr;</button>
+                                <span class="text-xs font-semibold px-1 text-gray-700"
+                                    x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
+                                <button
+                                    @click="if(modalMonth === 11){ modalMonth=0; modalYear++; }else{ modalMonth++; }"
+                                    class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&rarr;</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-3 rounded border border-gray-200 shadow-sm">
+                            <div
+                                class="grid grid-cols-7 text-center text-[9px] font-semibold text-gray-400 uppercase mb-2">
+                                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                            </div>
+                            <div class="grid grid-cols-7 gap-1">
+                                <template x-for="(item, idx) in modalCalendarDays" :key="idx">
+                                    <div>
+                                        <template x-if="item.isCurrentMonth">
+                                            <button @click="if(!item.isPast) selectedCalendarDate = item.dateStr"
+                                                :disabled="item.isPast"
+                                                :class="{
+                                                    'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400 line-through': item
+                                                        .isPast,
+                                                    'ring-2 ring-[#1C3627] font-bold': selectedCalendarDate === item
+                                                        .dateStr && !item.isPast,
+                                                    'bg-red-500 text-white font-bold': item.isBooked && !item.isPast,
+                                                    'bg-emerald-50 text-emerald-800 hover:bg-emerald-100': !item
+                                                        .isBooked && !item.isPast
+                                                }"
+                                                class="w-full h-9 text-[11px] rounded-sm flex flex-col items-center justify-center transition-all">
+                                                <span x-text="item.day"></span>
+                                                <span x-show="item.isBooked && !item.isPast"
+                                                    class="text-[7px] uppercase block leading-none">Booked</span>
+                                            </button>
+                                        </template>
+                                        <template x-if="!item.isCurrentMonth">
+                                            <div class="w-full h-9 bg-gray-50/50 rounded-sm"></div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-3.5 rounded border border-gray-200 space-y-2">
+                            <div class="flex items-center justify-between border-b pb-1.5">
+                                <span class="text-[10px] font-bold uppercase text-[#1C3627]">Schedule for:</span>
+                                <span class="text-xs font-semibold text-[#B89462]"
+                                    x-text="selectedCalendarDate"></span>
+                            </div>
+                            <div class="space-y-1.5 pt-1 max-h-36 overflow-y-auto">
+                                <template x-if="activeSelectedDateBookings.length > 0">
+                                    <template x-for="(b, i) in activeSelectedDateBookings" :key="i">
+                                        <div
+                                            class="bg-red-50 border border-red-200 text-red-800 p-2 rounded text-xs flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                                            <span x-text="b.label"></span>
+                                        </div>
+                                    </template>
+                                </template>
+                                <template x-if="activeSelectedDateBookings.length === 0">
+                                    <div
+                                        class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded text-xs text-center font-medium">
+                                        ✓ Fully Available on this Date
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-gray-200">
+                        <button @click="proceedToNewPage()"
+                            class="w-full bg-[#1C3627] text-white py-3.5 rounded-full text-xs font-semibold tracking-wider uppercase hover:bg-[#2a4d38] transition-all shadow-md flex items-center justify-center gap-2">
+                            <span>PROCEED WITH THIS ROOM</span>
+                            <span>&rarr;</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 4. Split CTA Section -->
     <section id="inquire" class="grid grid-cols-1 lg:grid-cols-2">
@@ -191,7 +365,8 @@
             </svg>
 
             <div class="relative z-10 max-w-md space-y-5 flex flex-col items-center">
-                <p class="text-[10px] uppercase tracking-[0.3em] text-gray-300 font-semibold">YOUR EVENT. OUR PLACE.</p>
+                <p class="text-[10px] uppercase tracking-[0.3em] text-gray-300 font-semibold">YOUR EVENT. OUR PLACE.
+                </p>
                 <h2 class="text-4xl sm:text-5xl font-serif leading-tight">Let's Make It<br>Happen</h2>
                 <p class="text-xs font-light text-gray-300 leading-relaxed">
                     Inquire now and schedule a visit to see The Gazebo.<br>
@@ -215,7 +390,8 @@
                     <path
                         d="M17.5 2.5c-2.5 0-5.5 1.5-7.5 4.5-2 3-2 6.5-1.5 8.5L2 22l2-2.5 6.5-6.5c2 .5 5.5.5 8.5-1.5 3-2 4.5-5 4.5-7.5-.5-1-1.5-1.5-2.5-1.5H17.5zM16 11c-1 1.5-2.5 2-4 2 1-1 2-2.5 3-4s2.5-2 4-2c-1 1-2 2.5-3 4z" />
                 </svg>
-                <span class="font-serif text-3xl tracking-[0.18em] uppercase leading-none font-medium">THE GAZEBO</span>
+                <span class="font-serif text-3xl tracking-[0.18em] uppercase leading-none font-medium">THE
+                    GAZEBO</span>
                 <div class="flex items-center gap-2">
                     <span class="w-5 h-[1px] bg-white/70"></span>
                     <span class="text-[9px] tracking-[0.2em] uppercase font-medium">EVENTS PLACE</span>

@@ -41,6 +41,7 @@
 
     modalMonth: new Date().getMonth(),
     modalYear: new Date().getFullYear(),
+    showCalendar: false,
     monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
 
     allTimeSlots: [
@@ -183,6 +184,14 @@
 
     submitReservation() {
         this.bookingSubmitted = true;
+    },
+
+    toggleCalendar() {
+        this.showCalendar = !this.showCalendar;
+    },
+
+    closeCalendar() {
+        this.showCalendar = false;
     }
 }">
 
@@ -241,54 +250,7 @@
                 </div>
             </div>
 
-            <!-- Calendar Display -->
-            <div class="bg-white border border-gray-200 rounded-sm p-6 space-y-4 shadow-sm">
-                <div class="flex items-center justify-between border-b pb-3">
-                    <div>
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-[#1C3627]">Venue Monthly Availability
-                            Calendar</h3>
-                        <p class="text-[10px] text-gray-400">Click a date below to inspect existing reservations</p>
-                    </div>
-                    <div class="flex items-center space-x-1">
-                        <button @click="if(modalMonth === 0){ modalMonth=11; modalYear--; }else{ modalMonth--; }"
-                            class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&larr;</button>
-                        <span class="text-xs font-semibold px-1 text-gray-700"
-                            x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
-                        <button @click="if(modalMonth === 11){ modalMonth=0; modalYear++; }"
-                            class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&rarr;</button>
-                    </div>
-                </div>
 
-                <div class="grid grid-cols-7 text-center text-[9px] font-semibold text-gray-400 uppercase mb-2">
-                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                </div>
-                <div class="grid grid-cols-7 gap-1.5">
-                    <template x-for="(item, idx) in calendarDays" :key="idx">
-                        <div>
-                            <template x-if="item.isCurrentMonth">
-                                <button @click="if(!item.isPast) selectedDate = item.dateStr" :disabled="item.isPast"
-                                    :class="{
-                                        'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400 line-through': item
-                                            .isPast,
-                                        'ring-2 ring-[#1C3627] font-bold': selectedDate === item.dateStr && !item
-                                            .isPast,
-                                        'bg-red-500 text-white font-bold': item.isBooked && !item.isPast,
-                                        'bg-emerald-50 text-emerald-800 hover:bg-emerald-100': !item.isBooked && !item
-                                            .isPast
-                                    }"
-                                    class="w-full h-10 text-xs rounded-sm flex flex-col items-center justify-center transition-all">
-                                    <span x-text="item.day"></span>
-                                    <span x-show="item.isBooked && !item.isPast"
-                                        class="text-[7px] uppercase leading-none block">Booked</span>
-                                </button>
-                            </template>
-                            <template x-if="!item.isCurrentMonth">
-                                <div class="w-full h-10 bg-gray-50/50 rounded-sm"></div>
-                            </template>
-                        </div>
-                    </template>
-                </div>
-            </div>
         </div>
 
         <!-- Right Column: Booking Form -->
@@ -301,10 +263,76 @@
                 </div>
 
                 <!-- Schedule Breakdown -->
-                <div class="bg-[#FBF9F5] p-3.5 rounded border border-gray-200 space-y-2">
-                    <div class="flex items-center justify-between text-xs">
+                <div class="bg-[#FBF9F5] p-3.5 rounded border border-gray-200 space-y-3">
+                    <div class="flex items-center justify-between gap-2 text-xs">
                         <span class="font-bold text-[#1C3627]">Schedule on Selected Date:</span>
-                        <strong class="text-[#B89462]" x-text="selectedDate"></strong>
+                        <div class="flex items-center gap-2">
+                            <strong class="text-[#B89462]" x-text="selectedDate"></strong>
+                            <button type="button" @click="toggleCalendar()"
+                                class="w-7 h-7 rounded border border-[#1C3627]/20 bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#1C3627] hover:text-white transition-all"
+                                aria-label="Open availability calendar">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
+                                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                                    <path d="M8 3v4M16 3v4M3 10h18"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="showCalendar" x-transition:enter="transition ease-out duration-150"
+                        x-transition:enter-start="opacity-0 -translate-y-1"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-100"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 -translate-y-1"
+                        class="bg-white border border-gray-200 rounded-sm p-3 shadow-sm">
+                        <div class="flex items-center justify-between border-b pb-2 mb-3">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-[#1C3627]">Availability
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button type="button"
+                                    @click="if(modalMonth === 0){ modalMonth=11; modalYear--; }else{ modalMonth--; }"
+                                    class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&larr;</button>
+                                <span class="text-[10px] font-semibold px-1 text-gray-700"
+                                    x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
+                                <button type="button"
+                                    @click="if(modalMonth === 11){ modalMonth=0; modalYear++; }else{ modalMonth++; }"
+                                    class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&rarr;</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-7 text-center text-[8px] font-semibold text-gray-400 uppercase mb-2">
+                            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1.5">
+                            <template x-for="(item, idx) in calendarDays" :key="idx">
+                                <div>
+                                    <template x-if="item.isCurrentMonth">
+                                        <button type="button"
+                                            @click="if(!item.isPast){ selectedDate = item.dateStr; closeCalendar(); }"
+                                            :disabled="item.isPast"
+                                            :class="{
+                                                'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400 line-through': item
+                                                    .isPast,
+                                                'ring-2 ring-[#1C3627] font-bold': selectedDate === item.dateStr && !
+                                                    item.isPast,
+                                                'bg-red-500 text-white font-bold': item.isBooked && !item.isPast,
+                                                'bg-emerald-50 text-emerald-800 hover:bg-emerald-100': !item.isBooked &&
+                                                    !item.isPast
+                                            }"
+                                            class="w-full h-9 text-[10px] rounded-sm flex flex-col items-center justify-center transition-all">
+                                            <span x-text="item.day"></span>
+                                            <span x-show="item.isBooked && !item.isPast"
+                                                class="text-[6px] uppercase leading-none block">Booked</span>
+                                        </button>
+                                    </template>
+                                    <template x-if="!item.isCurrentMonth">
+                                        <div class="w-full h-9 bg-gray-50/50 rounded-sm"></div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
                     </div>
 
                     <template x-if="dateBookings.length > 0">
@@ -416,7 +444,7 @@
 
     @if (session('success'))
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({
                     title: 'Reservation Submitted!',
                     text: '{{ session('success') }}',
@@ -435,13 +463,14 @@
 
     @if ($errors->any())
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            document.addEventListener('DOMContentLoaded', function() {
                 const errorMessages = @json($errors->all());
                 Swal.fire({
                     title: 'Please check your details',
-                    html: '<ul style="text-align:left; padding-left:1.2rem; margin:0;">' + errorMessages.map(function (message) {
-                        return '<li>' + message + '</li>';
-                    }).join('') + '</ul>',
+                    html: '<ul style="text-align:left; padding-left:1.2rem; margin:0;">' + errorMessages.map(
+                        function(message) {
+                            return '<li>' + message + '</li>';
+                        }).join('') + '</ul>',
                     icon: 'error',
                     confirmButtonText: 'Try Again',
                     confirmButtonColor: '#1C3627',
@@ -456,14 +485,14 @@
     @endif
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const bookingForm = document.querySelector('form[action="{{ route('venue.submit') }}"]');
 
             if (!bookingForm) {
                 return;
             }
 
-            bookingForm.addEventListener('submit', function (event) {
+            bookingForm.addEventListener('submit', function(event) {
                 event.preventDefault();
 
                 Swal.fire({

@@ -4,9 +4,72 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\VenueBookingController;
 use App\Http\Controllers\VenueController;
 use App\Http\Controllers\Admin\AdminAuthController;
+use App\Models\Inquiry;
+use App\Models\Venue;
+use Carbon\Carbon;
 
 Route::get('/', function () {
-    return view('welcome');
+    $spaces = Venue::query()
+        ->where('is_active', true)
+        ->orderBy('title')
+        ->get()
+        ->map(function ($venue) {
+            $gallery = collect([$venue->image, ...(array) ($venue->showcase_images ?? [])])
+                ->filter()
+                ->map(function ($image) {
+                    if (!$image) {
+                        return null;
+                    }
+
+                    return str_starts_with((string) $image, 'http')
+                        ? (string) $image
+                        : asset('storage/' . ltrim((string) $image, '/'));
+                })
+                ->filter()
+                ->values()
+                ->all();
+
+            if (empty($gallery)) {
+                $gallery[] = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80';
+            }
+
+            return [
+                'id' => (string) $venue->id,
+                'title' => $venue->title,
+                'description' => $venue->description,
+                'capacity' => 'up to ' . $venue->capacity . ' Guests',
+                'price' => '₱' . number_format((float) $venue->price_per_hour, 2) . ' / Hour',
+                'image' => $gallery[0],
+                'gallery' => $gallery,
+                'inclusions' => is_array($venue->features) ? array_values(array_filter($venue->features)) : [],
+            ];
+        })
+        ->values()
+        ->all();
+
+    $reservedSchedule = Inquiry::query()
+        ->where('status', 'approved')
+        ->get()
+        ->groupBy('venue_id')
+        ->map(function ($inquiries) {
+            return $inquiries->map(function ($item) {
+                $startFormatted = Carbon::parse($item->start_time)->format('g:i A');
+                $endFormatted = Carbon::parse($item->end_time)->format('g:i A');
+
+                return [
+                    'date' => Carbon::parse($item->booking_date)->format('Y-m-d'),
+                    'start' => Carbon::parse($item->start_time)->format('H:i'),
+                    'end' => Carbon::parse($item->end_time)->format('H:i'),
+                    'label' => "{$startFormatted} - {$endFormatted} ({$item->full_name})",
+                ];
+            })->values()->all();
+        })
+        ->mapWithKeys(function ($entries, $key) {
+            return [(string) $key => $entries];
+        })
+        ->all();
+
+    return view('welcome', compact('spaces', 'reservedSchedule'));
 });
 
 Route::get('/about', function () {
