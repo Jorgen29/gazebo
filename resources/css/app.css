@@ -1,0 +1,25 @@
+/* 1. External @import rules MUST be at the very top */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+/* 2. Tailwind imports */
+@import "tailwindcss";
+@theme {
+  --color-ivory: #F7F4EE;
+  --color-warm-beige: #E5DDD0;
+  --color-sage-green: #6F927D;
+  --color-deep-green: #1E3B2B;
+  --color-muted-gold: #B89A62;
+
+  --font-serif-heading: 'Cormorant Garamond', serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+body {
+    background-color: var(--color-ivory);
+    color: #2D3748;
+    font-family: var(--font-sans);
+}
+
+h1, h2, h3, .font-serif-heading {
+    font-family: var(--font-serif-heading);
+}
