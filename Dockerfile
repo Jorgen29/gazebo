@@ -4,7 +4,7 @@ FROM php:8.3-fpm
 RUN apt-get update && apt-get install -y \
     git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx libpq-dev libzip-dev
 
-# Install required PHP extensions (including zip, pdo_pgsql, and pgsql)
+# Install required PHP extensions
 RUN docker-php-ext-install pdo pdo_pgsql pgsql pdo_mysql mbstring xml bcmath gd zip
 
 # Install Composer
@@ -22,4 +22,4 @@ RUN composer install --no-dev --optimize-autoloader
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 EXPOSE 80
-CMD php artisan config:cache && php artisan route:cache && php artisan serve --host=0.0.0.0 --port=80
+CMD php artisan config:cache && php artisan route:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=80
