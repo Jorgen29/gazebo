@@ -52,16 +52,27 @@ class VenueController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title'             => 'required|string|max:255',
-            'price_per_hour'    => 'required|numeric|min:0',
-            'capacity'          => 'required|integer|min:1',
-            'is_active'         => 'required|boolean',
-            'description'      => 'nullable|string',
-            'image'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'showcase_images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'features'          => 'nullable|array',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title'             => 'required|string|max:255',
+                'price_per_hour'    => 'required|numeric|min:0',
+                'capacity'          => 'required|integer|min:1',
+                'is_active'         => 'required|boolean',
+                'description'      => 'nullable|string',
+                'image'             => 'nullable|image|mimes:jpeg,png,jpg,webp',
+                'showcase_images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp',
+                'features'          => 'nullable|array',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            throw $e;
+        }
 
         // Cover Image
         if ($request->hasFile('image')) {
@@ -84,6 +95,13 @@ class VenueController extends Controller
 
         Venue::create($validated);
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Venue created successfully!',
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Venue created successfully!');
     }
 
@@ -91,16 +109,56 @@ class VenueController extends Controller
     {
         $venue = Venue::findOrFail($id);
 
-        $validated = $request->validate([
-            'title'             => 'required|string|max:255',
-            'price_per_hour'    => 'required|numeric|min:0',
-            'capacity'          => 'required|integer|min:1',
-            'is_active'         => 'required|boolean',
-            'description'      => 'nullable|string',
-            'image'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'showcase_images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'features'          => 'nullable|array',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title'             => 'required|string|max:255',
+                'price_per_hour'    => 'required|numeric|min:0',
+                'capacity'          => 'required|integer|min:1',
+                'is_active'         => 'required|boolean',
+                'description'      => 'nullable|string',
+                'image'             => 'nullable|image|mimes:jpeg,png,jpg,webp',
+                'showcase_images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp',
+                'features'          => 'nullable|array',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            throw $e;
+        }
+
+        $existingShowcaseImages = is_array($venue->showcase_images) ? $venue->showcase_images : [];
+        $removedShowcaseImages = array_values(array_filter(array_map(function ($item) {
+            $clean = trim((string) $item, "\t\n\r/");
+            if ($clean === '') {
+                return null;
+            }
+
+            return preg_replace('#^https?://[^/]+#i', '', $clean)
+                ? preg_replace('#^https?://[^/]+#i', '', $clean)
+                : $clean;
+        }, preg_split('/[,]+/', (string) $request->input('removed_showcase_images', ''), -1, PREG_SPLIT_NO_EMPTY))));
+
+        $remainingShowcaseImages = $existingShowcaseImages;
+
+        if (!empty($removedShowcaseImages)) {
+            foreach ($removedShowcaseImages as $removedPath) {
+                $normalized = trim((string) preg_replace('#^/?storage/?#', '', $removedPath), "/\t\n\r");
+                if ($normalized !== '' && Storage::disk('public')->exists($normalized)) {
+                    Storage::disk('public')->delete($normalized);
+                }
+
+                $remainingShowcaseImages = array_values(array_filter($remainingShowcaseImages, function ($path) use ($removedPath, $normalized) {
+                    $current = trim((string) preg_replace('#^/?storage/?#', '', (string) $path), "/\t\n\r");
+                    $comparison = trim((string) preg_replace('#^/?storage/?#', '', $removedPath), "/\t\n\r");
+                    return $current !== $comparison && $current !== $normalized;
+                }));
+            }
+        }
 
         if ($request->hasFile('image')) {
             if ($venue->image && Storage::disk('public')->exists($venue->image)) {
@@ -110,20 +168,21 @@ class VenueController extends Controller
         }
 
         if ($request->hasFile('showcase_images')) {
-            // Delete old showcase images
-            if ($venue->showcase_images) {
-                foreach ($venue->showcase_images as $oldImg) {
-                    if (Storage::disk('public')->exists($oldImg)) {
-                        Storage::disk('public')->delete($oldImg);
-                    }
-                }
-            }
-
             $showcasePaths = [];
             foreach ($request->file('showcase_images') as $file) {
                 $showcasePaths[] = $file->store('venues/showcase', 'public');
             }
-            $validated['showcase_images'] = $showcasePaths;
+
+            $remainingShowcaseImages = array_values(array_merge(
+                $remainingShowcaseImages,
+                $showcasePaths
+            ));
+        }
+
+        if (!empty($remainingShowcaseImages)) {
+            $validated['showcase_images'] = array_values(array_unique(array_filter($remainingShowcaseImages, fn($path) => !empty($path))));
+        } else {
+            $validated['showcase_images'] = [];
         }
 
         if (!empty($validated['features'])) {
@@ -131,6 +190,13 @@ class VenueController extends Controller
         }
 
         $venue->update($validated);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Venue updated successfully!',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Venue updated successfully!');
     }

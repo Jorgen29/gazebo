@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Inquiry;
+use App\Models\Notification;
 use App\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -198,5 +200,174 @@ class PublicVenueListTest extends TestCase
             return $mail->hasTo($inquiry->email)
                 && str_contains(strtolower($mail->subject), 'approved');
         });
+    }
+
+    public function test_client_submission_and_payment_upload_create_notification_records(): void
+    {
+        $venue = Venue::create([
+            'title' => 'Notification Venue',
+            'description' => 'Tracks booking and payment notifications',
+            'capacity' => 160,
+            'price_per_hour' => 4200,
+            'image' => 'venues/notification.jpg',
+            'showcase_images' => ['venues/showcase/notification-1.jpg'],
+            'features' => ['Sound system'],
+            'is_active' => true,
+        ]);
+
+        $this->post('/book/submit', [
+            'venue_id' => (string) $venue->id,
+            'venue_title' => $venue->title,
+            'booking_date' => '2026-09-30',
+            'start_time' => '09:00',
+            'end_time' => '12:00',
+            'full_name' => 'New Client',
+            'email' => 'newclient@example.com',
+            'email_contact' => '09170000005',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => 'booking_request',
+            'email' => 'newclient@example.com',
+        ]);
+
+        $inquiry = Inquiry::first();
+
+        $this->post('/admin/inquiries/' . $inquiry->id . '/upload-proof', [
+            'payment_proof' => UploadedFile::fake()->image('payment-proof.jpg', 1200, 900),
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', [
+            'inquiry_id' => $inquiry->id,
+            'type' => 'payment_received',
+        ]);
+    }
+
+    public function test_venue_update_replaces_cover_and_removed_showcase_images(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'email' => 'admin@gmail.com',
+            'username' => 'admin',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $this->actingAs($admin, 'web');
+
+        $venue = Venue::create([
+            'title' => 'Replace Images Venue',
+            'description' => 'Old gallery content',
+            'capacity' => 180,
+            'price_per_hour' => 4000,
+            'image' => 'venues/old-cover.jpg',
+            'showcase_images' => ['venues/showcase/old-1.jpg', 'venues/showcase/old-2.jpg'],
+            'features' => ['Wi-Fi'],
+            'is_active' => true,
+        ]);
+
+        Storage::fake('public');
+        Storage::disk('public')->put('venues/showcase/old-1.jpg', 'old-1');
+        Storage::disk('public')->put('venues/showcase/old-2.jpg', 'old-2');
+        Storage::disk('public')->put('venues/old-cover.jpg', 'old-cover');
+
+        $response = $this->put('/admin/venues/' . $venue->id, [
+            'title' => 'Replace Images Venue',
+            'price_per_hour' => 4200,
+            'capacity' => 180,
+            'is_active' => '1',
+            'description' => 'Updated venue content',
+            'features' => ['Wi-Fi', 'Stage'],
+            'image' => UploadedFile::fake()->image('new-cover.jpg', 1200, 800),
+            'showcase_images' => [
+                UploadedFile::fake()->image('new-showcase-1.jpg', 1200, 800),
+            ],
+            'removed_showcase_images' => 'venues/showcase/old-1.jpg',
+        ]);
+
+        $response->assertRedirect();
+
+        $venue->refresh();
+        $this->assertNotSame('venues/old-cover.jpg', $venue->image);
+        $this->assertCount(1, $venue->showcase_images ?? []);
+        $this->assertStringContainsString('new-showcase-1', $venue->showcase_images[0]);
+    }
+
+    public function test_admin_can_mark_all_notifications_as_read(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'email' => 'admin@gmail.com',
+            'username' => 'admin',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $this->actingAs($admin, 'web');
+
+        $inquiry = Inquiry::create([
+            'venue_id' => '2',
+            'venue_title' => 'Read All Venue',
+            'booking_date' => '2026-10-01',
+            'start_time' => '10:00:00',
+            'end_time' => '12:00:00',
+            'full_name' => 'Read All Guest',
+            'email' => 'readall@example.com',
+            'email_contact' => '09170000006',
+            'status' => 'pending',
+        ]);
+
+        Notification::create([
+            'inquiry_id' => $inquiry->id,
+            'type' => 'booking_request',
+            'email' => $inquiry->email,
+            'subject' => 'New inquiry',
+            'message' => 'New inquiry message',
+        ]);
+
+        Notification::create([
+            'inquiry_id' => $inquiry->id,
+            'type' => 'payment_received',
+            'email' => $inquiry->email,
+            'subject' => 'Payment received',
+            'message' => 'Payment received message',
+        ]);
+
+        $this->post('/admin/notifications/mark-all-read')
+            ->assertRedirect('/admin/inquiries');
+
+        $this->assertEquals(2, Notification::query()->whereNotNull('read_at')->count());
+    }
+
+    public function test_clicking_a_notification_redirects_to_the_matching_inquiry_and_marks_it_read(): void
+    {
+        $admin = \App\Models\User::factory()->create([
+            'email' => 'admin@gmail.com',
+            'username' => 'admin',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $this->actingAs($admin, 'web');
+
+        $inquiry = Inquiry::create([
+            'venue_id' => '3',
+            'venue_title' => 'Highlight Venue',
+            'booking_date' => '2026-10-02',
+            'start_time' => '09:00:00',
+            'end_time' => '11:00:00',
+            'full_name' => 'Highlight Guest',
+            'email' => 'highlight@example.com',
+            'email_contact' => '09170000007',
+            'status' => 'pending',
+        ]);
+
+        $notification = Notification::create([
+            'inquiry_id' => $inquiry->id,
+            'type' => 'booking_request',
+            'email' => $inquiry->email,
+            'subject' => 'Inquiry update',
+            'message' => 'A notification was created.',
+        ]);
+
+        $this->get('/admin/notifications/' . $notification->id . '/open')
+            ->assertRedirect('/admin/inquiries?highlight_id=' . $inquiry->id);
+
+        $this->assertNotNull($notification->fresh()->read_at);
     }
 }

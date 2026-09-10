@@ -628,6 +628,11 @@
                     selectedVenue: null,
                     selectedVenueFeatures: [],
                     selectedVenueShowcase: [],
+                    coverPreviewUrl: '',
+                    showcasePreviewUrls: [],
+                    showcaseFiles: [],
+                    removedShowcaseImages: [],
+                    existingShowcaseUrls: [],
                     isEdit: false,
                     formData: {
                         id: null,
@@ -838,6 +843,11 @@
 
                     openAddModal() {
                         this.isEdit = false;
+                        this.coverPreviewUrl = '';
+                        this.showcasePreviewUrls = [];
+                        this.showcaseFiles = [];
+                        this.removedShowcaseImages = [];
+                        this.existingShowcaseUrls = [];
                         this.formData = {
                             id: null,
                             title: '',
@@ -852,6 +862,10 @@
 
                     openEditModal(venue) {
                         this.isEdit = true;
+                        this.selectedVenue = venue;
+                        this.selectedVenueFeatures = this.getFeaturesList(venue);
+                        this.selectedVenueShowcase = this.getShowcaseList(venue);
+
                         const parsedFeatures = this.getFeaturesList(venue);
                         this.formData = {
                             id: venue.id,
@@ -862,7 +876,151 @@
                             description: venue.description || '',
                             features: parsedFeatures.length > 0 ? parsedFeatures : ['']
                         };
+
+                        this.coverPreviewUrl = venue.image ?
+                            `/storage/${String(venue.image).replace(/^\/?storage\/?/, '').replace(/\\/g, '')}` :
+                            '';
+                        this.showcaseFiles = [];
+                        this.removedShowcaseImages = [];
+                        this.existingShowcaseUrls = this.getShowcaseList(venue);
+                        this.showcasePreviewUrls = [...this.existingShowcaseUrls];
                         this.venueModalOpen = true;
+                    },
+
+                    normalizeShowcasePath(path) {
+                        if (!path) return '';
+
+                        return String(path)
+                            .replace(/^https?:\/\/[^\/]+/i, '')
+                            .replace(/^\/?storage\/?/, '')
+                            .replace(/^\//, '')
+                            .replace(/\\/g, '')
+                            .trim();
+                    },
+
+                    previewCoverImage(event) {
+                        const file = event.target.files && event.target.files[0];
+                        if (!file) {
+                            this.coverPreviewUrl = this.selectedVenue && this.selectedVenue.image ?
+                                `/storage/${String(this.selectedVenue.image).replace(/^\/?storage\/?/, '').replace(/\\/g, '')}` :
+                                '';
+                            return;
+                        }
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.coverPreviewUrl = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    },
+
+                    previewShowcaseImages(event) {
+                        const files = Array.from(event.target.files || []);
+                        this.showcaseFiles = files;
+
+                        if (!files.length) {
+                            this.showcasePreviewUrls = this.selectedVenue ? this.getShowcaseList(this
+                                .selectedVenue) : [];
+                            return;
+                        }
+
+                        this.showcasePreviewUrls = files.map(file => URL.createObjectURL(file));
+                    },
+
+                    removeShowcasePreview(index) {
+                        const previewUrl = this.showcasePreviewUrls[index];
+                        const normalized = this.normalizeShowcasePath(previewUrl);
+
+                        if (normalized && this.existingShowcaseUrls.some(url => this.normalizeShowcasePath(
+                                url) === normalized)) {
+                            this.removedShowcaseImages.push(normalized);
+                        }
+
+                        this.showcasePreviewUrls.splice(index, 1);
+
+                        if (this.showcaseFiles.length) {
+                            this.showcaseFiles.splice(index, 1);
+                            this.$nextTick(() => {
+                                const fileInput = document.querySelector(
+                                    'input[name="showcase_images[]"]');
+                                if (!fileInput) return;
+                                const dt = new DataTransfer();
+                                this.showcaseFiles.forEach(file => dt.items.add(file));
+                                fileInput.files = dt.files;
+                            });
+                        }
+                    },
+
+                    syncShowcaseFiles() {
+                        const fileInput = document.querySelector('input[name="showcase_images[]"]');
+                        if (!fileInput) return;
+
+                        if (this.showcaseFiles.length) {
+                            const dt = new DataTransfer();
+                            this.showcaseFiles.forEach(file => dt.items.add(file));
+                            fileInput.files = dt.files;
+                        } else if (this.showcasePreviewUrls.length === 0) {
+                            fileInput.value = '';
+                        }
+                    },
+
+                    async submitVenueForm(event) {
+                        const form = event.target;
+                        this.syncShowcaseFiles();
+
+                        const formData = new FormData(form);
+                        if (this.isEdit) {
+                            formData.set('_method', 'PUT');
+                        }
+
+                        try {
+                            const response = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]')?.content || '',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: formData
+                            });
+
+                            const contentType = response.headers.get('content-type') || '';
+                            const payload = contentType.includes('application/json') ? await response
+                                .json() : null;
+
+                            if (!response.ok) {
+                                const errorMessage = payload?.message || payload?.errors ? Object
+                                    .values(payload.errors || {}).flat().join(' ') :
+                                    'Unable to save venue.';
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Update failed',
+                                    text: errorMessage,
+                                    confirmButtonColor: '#1C3627'
+                                });
+                                return;
+                            }
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: this.isEdit ? 'Venue updated' : 'Venue created',
+                                text: payload?.message || 'Venue saved successfully.',
+                                timer: 2200,
+                                showConfirmButton: false,
+                                confirmButtonColor: '#1C3627'
+                            });
+
+                            this.venueModalOpen = false;
+                            this.fetchVenues();
+                        } catch (error) {
+                            console.error('Venue submit error:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Request failed',
+                                text: 'Something went wrong while saving the venue.',
+                                confirmButtonColor: '#1C3627'
+                            });
+                        }
                     },
 
                     confirmDelete(venue) {
@@ -923,6 +1081,34 @@
                 }));
             });
         </script>
+
+        @if (session('success'))
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: '{{ session('success') }}',
+                        timer: 2200,
+                        showConfirmButton: false,
+                        confirmButtonColor: '#1C3627'
+                    });
+                });
+            </script>
+        @endif
+
+        @if (session('error'))
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: '{{ session('error') }}',
+                        confirmButtonColor: '#1C3627'
+                    });
+                });
+            </script>
+        @endif
 </body>
 
 </html>

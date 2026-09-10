@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Mail\InquiryStatusNotification;
 use App\Mail\NewInquiryNotification;
 use App\Mail\PaymentInstructionsMail;
+use App\Models\Notification;
 use Carbon\Carbon;
 
 class VenueBookingController extends Controller
@@ -314,6 +315,19 @@ class VenueBookingController extends Controller
         $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
         $inquiry->save();
 
+        Notification::create([
+            'inquiry_id' => $inquiry->id,
+            'type' => 'booking_request',
+            'email' => $inquiry->email,
+            'subject' => 'New booking request received',
+            'message' => 'A client submitted a new venue booking request.',
+            'metadata' => [
+                'venue_id' => $inquiry->venue_id,
+                'venue_title' => $inquiry->venue_title,
+                'booking_date' => $inquiry->booking_date,
+            ],
+        ]);
+
         // Send email notification to Admin using configured sender address
         try {
             $adminEmail = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
@@ -330,6 +344,7 @@ class VenueBookingController extends Controller
     public function adminInquiries(Request $request)
     {
         $status = $request->query('status');
+        $highlightId = $request->query('highlight_id');
 
         $query = Inquiry::latest();
 
@@ -339,7 +354,33 @@ class VenueBookingController extends Controller
 
         $inquiries = $query->paginate(10);
 
-        return view('admin.inquiries', compact('inquiries'));
+        return view('admin.inquiries', compact('inquiries', 'highlightId'));
+    }
+
+    public function markAllNotificationsRead()
+    {
+        Notification::query()->whereNull('read_at')->update([
+            'read_at' => now(),
+        ]);
+
+        return redirect()->route('admin.inquiries');
+    }
+
+    public function openNotification($id)
+    {
+        $notification = Notification::findOrFail($id);
+
+        $notification->update([
+            'read_at' => $notification->read_at ?? now(),
+        ]);
+
+        $highlightId = $notification->inquiry_id ?? null;
+
+        if ($highlightId) {
+            return redirect()->route('admin.inquiries', ['highlight_id' => $highlightId]);
+        }
+
+        return redirect()->route('admin.inquiries');
     }
 
     // Send GCash Payment instructions email to customer
@@ -378,6 +419,18 @@ class VenueBookingController extends Controller
             $path = $request->file('payment_proof')->store('payment_proofs', 'public');
             $inquiry->update([
                 'payment_proof' => $path,
+            ]);
+
+            Notification::create([
+                'inquiry_id' => $inquiry->id,
+                'type' => 'payment_received',
+                'email' => $inquiry->email,
+                'subject' => 'Payment proof received',
+                'message' => 'A client uploaded a payment proof for their booking.',
+                'metadata' => [
+                    'payment_path' => $path,
+                    'booking_reference' => $inquiry->booking_reference,
+                ],
             ]);
         }
 

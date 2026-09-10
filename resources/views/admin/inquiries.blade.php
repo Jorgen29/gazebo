@@ -52,6 +52,10 @@
     selectedInquiryStatus: '',
     hasPaymentProof: false,
     hasPaymentRequested: false,
+    highlightId: {{ $highlightId ?? 'null' }},
+    isHighlighted(id) {
+        return this.highlightId !== null && Number(this.highlightId) === Number(id);
+    },
     openActionModal(id, customer, proof, paymentRequested, status = '') {
         this.selectedInquiryId = id;
         this.selectedCustomer = customer;
@@ -121,7 +125,10 @@
                                             ? \Carbon\Carbon::parse($item->booking_date)->format('F j, Y')
                                             : 'N/A';
                                     @endphp
-                                    <tr class="hover:bg-[#F7F4EE]/60 transition-colors"
+                                    <tr class="transition-colors"
+                                        :class="isHighlighted({{ $item->id }}) ?
+                                            'bg-[#F7F1E7] ring-1 ring-[#B89462] shadow-[inset_0_0_0_1px_#B89462]' :
+                                            'hover:bg-[#F7F4EE]/60'"
                                         x-show="matchesSearch(
                                         '{{ addslashes($item->full_name) }}',
                                         '{{ addslashes($item->email) }}',

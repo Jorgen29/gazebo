@@ -151,6 +151,66 @@
                     </div>
                 </div>
 
+                <div
+                    class="bg-[#FFFDFB] border border-[#E5DDD0] rounded-2xl p-6 shadow-[0_12px_30px_rgba(28,54,39,0.05)]">
+                    <div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-[#B89462]">Upcoming
+                                Schedule</p>
+                            <h3 class="font-serif text-3xl text-[#1C3627] mt-1">Approved Reservations</h3>
+                        </div>
+                        <p class="text-sm text-[#6B7E73]">Confirmed bookings that are still upcoming</p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr
+                                    class="border-b border-[#E5DDD0] text-[#6B7E73] uppercase font-bold text-[10px] tracking-[0.22em]">
+                                    <th class="py-4 px-4">Client Name</th>
+                                    <th class="py-4 px-4">Venue</th>
+                                    <th class="py-4 px-4">Booking Date</th>
+                                    <th class="py-4 px-4">Time</th>
+                                    <th class="py-4 px-4">Reference</th>
+                                    <th class="py-4 px-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-dashed divide-[#E5DDD0] text-[#1C3627]">
+                                @forelse ($upcomingApprovedInquiries as $inquiry)
+                                    <tr class="hover:bg-[#F7F4EE] transition-colors">
+                                        <td class="py-4 px-4 font-semibold text-[#1C3627]">{{ $inquiry->full_name }}
+                                        </td>
+                                        <td class="py-4 px-4 font-medium">{{ $inquiry->venue_title }}</td>
+                                        <td class="py-4 px-4">
+                                            {{ $inquiry->booking_date ? $inquiry->booking_date->format('M d, Y') : 'N/A' }}
+                                        </td>
+                                        <td class="py-4 px-4 font-medium text-[#1C3627]">
+                                            {{ $inquiry->start_time ? \Carbon\Carbon::parse($inquiry->start_time)->format('g:i A') : 'N/A' }}
+                                            -
+                                            {{ $inquiry->end_time ? \Carbon\Carbon::parse($inquiry->end_time)->format('g:i A') : 'N/A' }}
+                                        </td>
+                                        <td class="py-4 px-4 font-mono text-[#B89462] font-bold text-xs">
+                                            {{ $inquiry->booking_reference ?: 'R' . str_pad((string) $inquiry->id, 6, '0', STR_PAD_LEFT) }}
+                                        </td>
+                                        <td class="py-4 px-4 text-right">
+                                            <a href="{{ route('admin.inquiries') }}?status=approved"
+                                                class="inline-block bg-[#1C3627] hover:bg-[#2e4a3b] text-white px-4 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.18em] transition-all shadow-sm">
+                                                View Booking
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="py-8 px-4 text-center text-[#6B7E73]">
+                                            No upcoming approved inquiries found.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </main>
         </div>
 
