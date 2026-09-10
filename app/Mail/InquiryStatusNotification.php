@@ -7,27 +7,26 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class PaymentInstructionsMail extends Mailable
+class InquiryStatusNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $inquiry;
+    public Inquiry $inquiry;
+    public string $statusLabel;
 
-    public function __construct(Inquiry $inquiry)
+    public function __construct(Inquiry $inquiry, string $statusLabel)
     {
         $this->inquiry = $inquiry;
+        $this->statusLabel = ucfirst(strtolower($statusLabel));
     }
 
     public function build()
     {
-        $reference = $this->inquiry->booking_reference ?? $this->inquiry->getBookingReference();
-        $subject = 'Booking Request - ' . $reference;
         $fromAddress = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
         $fromName = config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'));
 
         return $this->from($fromAddress, $fromName)
-            ->subject($subject)
-            ->replyTo($fromAddress, $fromName)
-            ->view('emails.payment_instructions');
+            ->subject('Reservation ' . $this->statusLabel . ' - ' . $this->inquiry->venue_title)
+            ->view('emails.inquiry_status_notification');
     }
 }

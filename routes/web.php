@@ -104,7 +104,31 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Protected Admin Routes (Uses custom AdminAuthenticate middleware)
     Route::middleware(['admin.auth'])->group(function () {
         Route::get('/dashboard', function () {
-            return view('admin.dashboard');
+            $totalInquiries = Inquiry::count();
+            $pendingInquiries = Inquiry::where('status', 'pending')->count();
+            $verifiedPayments = Inquiry::where('status', 'approved')->count();
+            $activeVenues = Venue::where('is_active', true)->count();
+            $recentPendingInquiries = Inquiry::query()
+                ->where('status', 'pending')
+                ->latest()
+                ->limit(5)
+                ->get();
+            $upcomingApprovedInquiries = Inquiry::query()
+                ->where('status', 'approved')
+                ->whereDate('booking_date', '>=', now()->toDateString())
+                ->orderBy('booking_date')
+                ->orderBy('start_time')
+                ->limit(5)
+                ->get();
+
+            return view('admin.dashboard', compact(
+                'totalInquiries',
+                'pendingInquiries',
+                'verifiedPayments',
+                'activeVenues',
+                'recentPendingInquiries',
+                'upcomingApprovedInquiries'
+            ));
         })->name('dashboard');
 
         // Admin Inquiries Actions
@@ -112,6 +136,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/inquiries/{id}/status', [VenueBookingController::class, 'updateStatus'])->name('inquiries.update-status');
         Route::post('/inquiries/{id}/send-payment-email', [VenueBookingController::class, 'sendPaymentEmail'])->name('inquiries.send-payment');
         Route::post('/inquiries/{id}/upload-proof', [VenueBookingController::class, 'uploadPaymentProof'])->name('inquiries.upload-proof');
+
+        Route::post('/notifications/mark-all-read', [VenueBookingController::class, 'markAllNotificationsRead'])->name('notifications.mark-all-read');
+        Route::get('/notifications/{id}/open', [VenueBookingController::class, 'openNotification'])->name('notifications.open');
 
         // Admin Venues Management Routes
         Route::resource('venues', VenueController::class)->except(['create', 'show', 'edit']);

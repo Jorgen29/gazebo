@@ -25,11 +25,13 @@
 
         <!-- Venue Form -->
         <form :action="isEdit ? `/admin/venues/${formData.id}` : '{{ route('admin.venues.store') }}'" method="POST"
-            enctype="multipart/form-data" class="space-y-4 overflow-y-auto pr-1 flex-1">
+            enctype="multipart/form-data" class="space-y-4 overflow-y-auto pr-1 flex-1"
+            @submit.prevent="submitVenueForm($event)">
             @csrf
             <template x-if="isEdit">
                 <input type="hidden" name="_method" value="PUT">
             </template>
+            <input type="hidden" name="removed_showcase_images" x-bind:value="removedShowcaseImages.join(',')">
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Title -->
@@ -56,10 +58,15 @@
                 </div>
 
                 <!-- Main Cover Image -->
-                <div>
+                <div class="md:col-span-2">
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Cover Image</label>
-                    <input type="file" name="image" accept="image/*"
+                    <input type="file" name="image" accept="image/*" @change="previewCoverImage($event)"
                         class="w-full text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#F7F4EE] file:text-gray-700 hover:file:bg-[#E5DDD0] cursor-pointer">
+
+                    <div x-show="coverPreviewUrl" x-cloak
+                        class="mt-3 rounded-2xl border border-[#E5DDD0] bg-[#F7F4EE] p-2">
+                        <img :src="coverPreviewUrl" alt="Cover preview" class="w-full h-40 object-cover rounded-xl">
+                    </div>
                 </div>
 
                 <!-- Status -->
@@ -76,9 +83,26 @@
                 <div class="md:col-span-2">
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Showcase Images (Multiple)</label>
                     <input type="file" name="showcase_images[]" accept="image/*" multiple
+                        @change="previewShowcaseImages($event)"
                         class="w-full text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#F7F4EE] file:text-gray-700 hover:file:bg-[#E5DDD0] cursor-pointer">
                     <p class="text-[10px] text-gray-400 mt-1">Upload multiple photos to feature in the venue gallery
                         display.</p>
+
+                    <div x-show="showcasePreviewUrls.length > 0" x-cloak class="mt-3 grid grid-cols-3 gap-2">
+                        <template x-for="(preview, index) in showcasePreviewUrls" :key="index">
+                            <div class="relative overflow-hidden rounded-xl border border-[#E5DDD0] bg-[#F7F4EE]">
+                                <img :src="preview" alt="Showcase preview" class="w-full h-20 object-cover">
+                                <button type="button" @click="removeShowcasePreview(index)"
+                                    class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[#1C3627]/85 text-white flex items-center justify-center hover:bg-[#1C3627] transition-colors cursor-pointer shadow-sm"
+                                    title="Remove image">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Dynamic Features Section -->

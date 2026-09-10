@@ -27,8 +27,9 @@
             <form :action="`{{ route('admin.inquiries.send-payment', ':id') }}`.replace(':id', selectedInquiryId)"
                 method="POST">
                 @csrf
-                <button type="submit"
-                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-[#6F927D] bg-[#F7F4EE] hover:bg-[#E5DDD0]/60 flex items-center gap-3 transition-colors">
+                <button type="submit" x-bind:disabled="selectedInquiryStatus === 'approved'"
+                    x-bind:class="selectedInquiryStatus === 'approved' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5DDD0]/60'"
+                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-[#6F927D] bg-[#F7F4EE] flex items-center gap-3 transition-colors">
                     <svg class="w-4 h-4 text-[#B89A62]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -45,8 +46,9 @@
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="approved">
-                <button type="submit" :disabled="!hasPaymentProof"
-                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 disabled:opacity-40 disabled:hover:bg-emerald-50 disabled:cursor-not-allowed flex items-center gap-3 transition-colors">
+                <button type="submit" :disabled="!hasPaymentProof || selectedInquiryStatus === 'approved'"
+                    x-bind:class="selectedInquiryStatus === 'approved' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-emerald-100/80'"
+                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 disabled:opacity-40 disabled:hover:bg-emerald-50 disabled:cursor-not-allowed flex items-center gap-3 transition-colors">
                     <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
@@ -64,13 +66,30 @@
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="declined">
-                <button type="submit"
-                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100/80 flex items-center gap-3 transition-colors">
+                <button type="submit" x-bind:disabled="selectedInquiryStatus === 'approved'"
+                    x-bind:class="selectedInquiryStatus === 'approved' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-rose-100/80'"
+                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 flex items-center gap-3 transition-colors">
                     <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     Decline Reservation
+                </button>
+            </form>
+
+            <!-- Cancel Reservation -->
+            <form :action="`{{ route('admin.inquiries.update-status', ':id') }}`.replace(':id', selectedInquiryId)"
+                method="POST">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status" value="cancelled">
+                <button type="submit" x-show="selectedInquiryStatus === 'approved'"
+                    class="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-[#52463B] bg-[#F3EFEA] hover:bg-[#E9E1D7] flex items-center gap-3 transition-colors">
+                    <svg class="w-4 h-4 text-[#7A6557]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Cancel Reservation
                 </button>
             </form>
         </div>

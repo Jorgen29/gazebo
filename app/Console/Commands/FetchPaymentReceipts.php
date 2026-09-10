@@ -97,21 +97,21 @@ class FetchPaymentReceipts extends Command
                     continue;
                 }
 
-                // Extract inquiry ID
+                // Extract booking reference
                 if (!preg_match('/Booking Request - R(\d+)/i', $subject, $matches)) {
-                    $this->warn("No valid reference code found in subject. Skipping...");
+                    $this->warn("No valid booking reference found in subject. Skipping...");
                     continue;
                 }
 
-                $inquiryId = $matches[1];
+                $reference = 'R' . $matches[1];
 
-                // Match inquiry record
-                $inquiry = Inquiry::where('id', $inquiryId)
+                // Match inquiry record by the generated booking reference
+                $inquiry = Inquiry::where('booking_reference', $reference)
                     ->whereNull('payment_proof')
                     ->first();
 
                 if (!$inquiry) {
-                    $this->warn("No pending inquiry without payment proof found for ID #{$inquiryId}.");
+                    $this->warn("No pending inquiry without payment proof found for reference {$reference}.");
                     continue;
                 }
 

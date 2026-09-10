@@ -7,8 +7,10 @@ use App\Models\Inquiry;
 use App\Models\Venue;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use App\Mail\InquiryStatusNotification;
 use App\Mail\NewInquiryNotification;
 use App\Mail\PaymentInstructionsMail;
+use App\Models\Notification;
 use Carbon\Carbon;
 
 class VenueBookingController extends Controller
@@ -310,10 +312,26 @@ class VenueBookingController extends Controller
         ]);
 
         $inquiry = Inquiry::create($validated);
+        $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
+        $inquiry->save();
 
-        // Send email notification to Admin
+        Notification::create([
+            'inquiry_id' => $inquiry->id,
+            'type' => 'booking_request',
+            'email' => $inquiry->email,
+            'subject' => 'New booking request received',
+            'message' => 'A client submitted a new venue booking request.',
+            'metadata' => [
+                'venue_id' => $inquiry->venue_id,
+                'venue_title' => $inquiry->venue_title,
+                'booking_date' => $inquiry->booking_date,
+            ],
+        ]);
+
+        // Send email notification to Admin using configured sender address
         try {
-            Mail::to('bacolodjorgen29@gmail.com')->send(new NewInquiryNotification($inquiry));
+            $adminEmail = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
+            Mail::to($adminEmail)->send(new NewInquiryNotification($inquiry));
         } catch (\Exception $e) {
             // Log error if mail server fails
             \Log::error('Mail sending failed: ' . $e->getMessage());
@@ -326,6 +344,7 @@ class VenueBookingController extends Controller
     public function adminInquiries(Request $request)
     {
         $status = $request->query('status');
+        $highlightId = $request->query('highlight_id');
 
         $query = Inquiry::latest();
 
@@ -335,7 +354,33 @@ class VenueBookingController extends Controller
 
         $inquiries = $query->paginate(10);
 
-        return view('admin.inquiries', compact('inquiries'));
+        return view('admin.inquiries', compact('inquiries', 'highlightId'));
+    }
+
+    public function markAllNotificationsRead()
+    {
+        Notification::query()->whereNull('read_at')->update([
+            'read_at' => now(),
+        ]);
+
+        return redirect()->route('admin.inquiries');
+    }
+
+    public function openNotification($id)
+    {
+        $notification = Notification::findOrFail($id);
+
+        $notification->update([
+            'read_at' => $notification->read_at ?? now(),
+        ]);
+
+        $highlightId = $notification->inquiry_id ?? null;
+
+        if ($highlightId) {
+            return redirect()->route('admin.inquiries', ['highlight_id' => $highlightId]);
+        }
+
+        return redirect()->route('admin.inquiries');
     }
 
     // Send GCash Payment instructions email to customer
@@ -345,6 +390,11 @@ class VenueBookingController extends Controller
 
         if (!$inquiry->email) {
             return back()->with('error', 'Customer email address is missing.');
+        }
+
+        if (empty($inquiry->booking_reference)) {
+            $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
+            $inquiry->save();
         }
 
         Mail::to($inquiry->email)->send(new PaymentInstructionsMail($inquiry));
@@ -370,6 +420,18 @@ class VenueBookingController extends Controller
             $inquiry->update([
                 'payment_proof' => $path,
             ]);
+
+            Notification::create([
+                'inquiry_id' => $inquiry->id,
+                'type' => 'payment_received',
+                'email' => $inquiry->email,
+                'subject' => 'Payment proof received',
+                'message' => 'A client uploaded a payment proof for their booking.',
+                'metadata' => [
+                    'payment_path' => $path,
+                    'booking_reference' => $inquiry->booking_reference,
+                ],
+            ]);
         }
 
         return back()->with('success', 'Payment proof attached successfully. You can now approve the booking.');
@@ -378,10 +440,25 @@ class VenueBookingController extends Controller
     // Update Inquiry status
     public function updateStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:pending,approved,declined']);
+        $request->validate(['status' => 'required|in:pending,approved,declined,cancelled']);
 
         $inquiry = Inquiry::findOrFail($id);
-        $inquiry->update(['status' => $request->status]);
+        $newStatus = $request->status;
+        $inquiry->update(['status' => $newStatus]);
+
+        if (!empty($inquiry->email) && in_array($newStatus, ['approved', 'declined', 'cancelled'], true)) {
+            try {
+                $notification = (new InquiryStatusNotification($inquiry, $newStatus))
+                    ->from(
+                        config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+                        config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'))
+                    );
+
+                Mail::to($inquiry->email)->send($notification);
+            } catch (\Exception $e) {
+                \Log::error('Inquiry status email failed: ' . $e->getMessage());
+            }
+        }
 
         return back()->with('success', 'Inquiry status updated successfully.');
     }
