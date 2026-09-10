@@ -36,8 +36,7 @@
 
     // Header Filter State
     dateFilterOpen: false,
-    startDate: '2026-09-15',
-    endDate: '2026-09-15',
+    startDate: new Date().toISOString().split('T')[0],
     startTime: '08:00',
     endTime: '17:00',
     todayStr: new Date().toISOString().split('T')[0],
@@ -45,7 +44,7 @@
     // Calendar Navigation inside Modal
     modalMonth: new Date().getMonth(),
     modalYear: new Date().getFullYear(),
-    selectedCalendarDate: '2026-09-15',
+    selectedCalendarDate: new Date().toISOString().split('T')[0],
     monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
 
     reservedSchedule: @js($reservedSchedule ?? []),
@@ -87,7 +86,7 @@
     openDetailModal(space) {
         this.activeSpace = space;
         this.activeImageIndex = 0;
-        this.selectedCalendarDate = '2026-09-15';
+        this.syncDateSelection(this.startDate || this.todayStr);
         this.detailModalOpen = true;
     },
 
@@ -101,9 +100,93 @@
     },
 
     get formattedFilterLabel() {
-        let dateLabel = this.startDate ? (this.startDate === this.endDate ? this.startDate : `${this.startDate} to ${this.endDate}`) : 'All Dates';
+        let dateLabel = this.startDate || 'Select a date';
         let timeLabel = (this.startTime && this.endTime) ? `${this.startTime} – ${this.endTime}` : 'All Hours';
         return `${dateLabel} (${timeLabel})`;
+    },
+
+    init() {
+        this.startDate = this.todayStr;
+        this.selectedCalendarDate = this.startDate;
+        const today = new Date(`${this.todayStr}T00:00:00`);
+        this.modalMonth = today.getMonth();
+        this.modalYear = today.getFullYear();
+    },
+
+    syncDateSelection(dateStr) {
+        if (!dateStr) return;
+        this.startDate = dateStr;
+        this.selectedCalendarDate = dateStr;
+        const dateObj = new Date(`${dateStr}T00:00:00`);
+        this.modalMonth = dateObj.getMonth();
+        this.modalYear = dateObj.getFullYear();
+    },
+
+    timeToMinutes(value) {
+        if (!value) return 0;
+        const [hours, minutes] = String(value).split(':').map(Number);
+        return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
+    },
+
+    getVenueAvailability(space) {
+        const businessStart = this.timeToMinutes(this.startTime);
+        const businessEnd = this.timeToMinutes(this.endTime);
+        const totalDayMinutes = Math.max(0, businessEnd - businessStart);
+
+        if (totalDayMinutes <= 0) {
+            return { hasAvailable: false, totalFreeMinutes: 0, label: 'Fully booked' };
+        }
+
+        if (!this.startDate) {
+            return { hasAvailable: false, totalFreeMinutes: 0, label: 'Select a date' };
+        }
+
+        const bookings = this.getRoomBookingsForDate(space.id, this.startDate);
+        if (!bookings.length) {
+            return {
+                hasAvailable: true,
+                totalFreeMinutes: totalDayMinutes,
+                label: this.formatRemainingTime(totalDayMinutes)
+            };
+        }
+
+        let occupiedMinutes = 0;
+        bookings.forEach((booking) => {
+            const bookingStart = this.timeToMinutes(booking.start || booking.start_time || '00:00');
+            const bookingEnd = this.timeToMinutes(booking.end || booking.end_time || '23:59');
+            const overlapStart = Math.max(bookingStart, businessStart);
+            const overlapEnd = Math.min(bookingEnd, businessEnd);
+            occupiedMinutes += Math.max(0, overlapEnd - overlapStart);
+        });
+
+        const remainingMinutes = Math.max(0, totalDayMinutes - occupiedMinutes);
+
+        return {
+            hasAvailable: remainingMinutes > 0,
+            totalFreeMinutes: remainingMinutes,
+            label: this.formatRemainingTime(remainingMinutes)
+        };
+    },
+
+    formatRemainingTime(minutes) {
+        if (minutes <= 0) return 'Fully booked';
+
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+
+        if (hours && mins) return `${hours}h ${mins}m left`;
+        if (hours) return `${hours}h left`;
+        return `${mins}m left`;
+    },
+
+    get filteredSpaces() {
+        return (this.spaces || []).filter((space) => {
+            const availability = this.getVenueAvailability(space);
+            return availability.hasAvailable;
+        }).map((space) => ({
+            ...space,
+            availability: this.getVenueAvailability(space)
+        }));
     }
 }">
 
@@ -154,20 +237,61 @@
                             class="absolute right-0 top-full mt-3 w-full sm:w-80 bg-white text-gray-800 rounded-sm shadow-2xl border border-gray-200 p-4 z-[100] space-y-3">
                             <h4 class="text-xs font-semibold uppercase tracking-wider text-[#1C3627] border-b pb-2">
                                 Filter Availability</h4>
-                            <div class="space-y-2">
-                                <label class="block text-[10px] font-semibold uppercase text-gray-500">Date
-                                    Range</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input type="date" :min="todayStr" x-model="startDate"
-                                        class="w-full text-xs p-2 border rounded-sm">
-                                    <input type="date" :min="startDate || todayStr" x-model="endDate"
-                                        class="w-full text-xs p-2 border rounded-sm">
+
+                            <div class="rounded-2xl border border-[#E5DDD0] bg-[#F7F4EE] p-3">
+                                <div class="flex items-center justify-between mb-3">
+                                    <button type="button"
+                                        @click="if (modalMonth === 0) { modalMonth = 11; modalYear--; } else { modalMonth--; }"
+                                        class="w-8 h-8 rounded-full border border-[#E5DDD0] bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#EAF0EB] transition-all">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+                                    <span class="text-xs font-bold text-[#1C3627] uppercase tracking-[0.12em]"
+                                        x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
+                                    <button type="button"
+                                        @click="if (modalMonth === 11) { modalMonth = 0; modalYear++; } else { modalMonth++; }"
+                                        class="w-8 h-8 rounded-full border border-[#E5DDD0] bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#EAF0EB] transition-all">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div
+                                    class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold uppercase tracking-[0.12em] text-[#6B7E73] mb-2">
+                                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                                </div>
+
+                                <div class="grid grid-cols-7 gap-1">
+                                    <template x-for="(item, idx) in modalCalendarDays" :key="idx">
+                                        <div>
+                                            <template x-if="item.isCurrentMonth">
+                                                <button type="button"
+                                                    @click="syncDateSelection(item.dateStr); dateFilterOpen = false"
+                                                    :disabled="item.isPast"
+                                                    :class="item.dateStr ? (selectedCalendarDate === item.dateStr && !item
+                                                            .isPast ?
+                                                            'bg-[#1C3627] text-white ring-2 ring-[#1C3627]/30' :
+                                                            item.isPast ?
+                                                            'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                                                            'bg-white text-[#1C3627] hover:bg-[#EAF0EB]') :
+                                                        'bg-transparent text-gray-300 cursor-not-allowed'"
+                                                    class="relative w-full h-10 rounded-lg border border-[#E5DDD0] text-[10px] font-semibold transition-all">
+                                                    <span x-text="item.day || ''" class="block"></span>
+                                                </button>
+                                            </template>
+                                            <template x-if="!item.isCurrentMonth">
+                                                <div
+                                                    class="w-full h-10 rounded-lg border border-transparent bg-gray-50/50">
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
                                 </div>
                             </div>
-                            <button @click="dateFilterOpen = false"
-                                class="w-full bg-[#1C3627] text-white py-2 text-xs font-semibold uppercase tracking-wider rounded-sm hover:bg-[#2a4d38]">
-                                Apply Filter
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -178,7 +302,7 @@
     <!-- Venue Catalog Grid -->
     <section class="relative z-10 py-12 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto space-y-8">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <template x-for="space in spaces" :key="space.id">
+            <template x-for="space in filteredSpaces" :key="space.id">
                 <div
                     class="bg-white border border-gray-200/80 rounded-sm shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group">
                     <div>
@@ -196,6 +320,12 @@
                             </div>
                             <p class="text-xs text-gray-600 font-light leading-relaxed line-clamp-2"
                                 x-text="space.description"></p>
+                            <div class="flex items-center justify-between gap-2 border-t border-[#E5DDD0] pt-2">
+                                <span
+                                    class="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B7E73]">Availability</span>
+                                <span class="text-[10px] font-bold text-[#B89462]"
+                                    x-text="space.availability.label"></span>
+                            </div>
                         </div>
                     </div>
                     <div class="p-6 pt-0">
@@ -231,17 +361,30 @@
                 <div class="lg:col-span-7 p-5 sm:p-6 space-y-6 border-b lg:border-b-0 lg:border-r border-gray-200">
                     <div class="space-y-2">
                         <p class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Showcase Photos</p>
-                        <div class="relative h-64 sm:h-72 bg-black rounded-sm overflow-hidden">
+                        <div
+                            class="relative h-64 sm:h-72 bg-[#F3EFEA] rounded-sm overflow-hidden border border-[#E5DDD0]">
                             <template x-if="activeSpace">
-                                <img :src="activeSpace.gallery[activeImageIndex]" class="w-full h-full object-cover">
+                                <div class="relative w-full h-full">
+                                    <template x-for="(img, idx) in activeSpace.gallery" :key="idx">
+                                        <img x-show="activeImageIndex === idx"
+                                            x-transition:enter="transition ease-out duration-400"
+                                            x-transition:enter-start="opacity-0 scale-105"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-200"
+                                            x-transition:leave-start="opacity-100 scale-100"
+                                            x-transition:leave-end="opacity-0 scale-95" :src="img"
+                                            class="absolute inset-0 w-full h-full object-cover">
+                                    </template>
+                                </div>
                             </template>
                         </div>
-                        <div class="flex items-center gap-2 overflow-x-auto pt-1">
+                        <div class="flex items-center gap-2 overflow-x-auto pt-1 pb-1">
                             <template x-if="activeSpace">
                                 <template x-for="(img, idx) in activeSpace.gallery" :key="idx">
                                     <button @click="activeImageIndex = idx"
-                                        :class="activeImageIndex === idx ? 'ring-2 ring-[#1C3627]' : 'opacity-60'"
-                                        class="w-16 h-12 rounded-sm overflow-hidden shrink-0">
+                                        :class="activeImageIndex === idx ? 'ring-2 ring-[#1C3627] opacity-100' :
+                                            'opacity-60 hover:opacity-90'"
+                                        class="w-16 h-12 rounded-sm overflow-hidden shrink-0 border border-[#E5DDD0] bg-white transition-all duration-200">
                                         <img :src="img" class="w-full h-full object-cover">
                                     </button>
                                 </template>
@@ -298,34 +441,59 @@
                             </div>
                         </div>
 
-                        <div class="bg-white p-3 rounded border border-gray-200 shadow-sm">
+                        <div class="rounded-2xl border border-[#E5DDD0] bg-[#F7F4EE] p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <button type="button"
+                                    @click="if (modalMonth === 0) { modalMonth = 11; modalYear--; } else { modalMonth--; }"
+                                    class="w-9 h-9 rounded-full border border-[#E5DDD0] bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#EAF0EB] transition-all">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <span class="text-sm font-bold text-[#1C3627] uppercase tracking-[0.12em]"
+                                    x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
+                                <button type="button"
+                                    @click="if (modalMonth === 11) { modalMonth = 0; modalYear++; } else { modalMonth++; }"
+                                    class="w-9 h-9 rounded-full border border-[#E5DDD0] bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#EAF0EB] transition-all">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+
                             <div
-                                class="grid grid-cols-7 text-center text-[9px] font-semibold text-gray-400 uppercase mb-2">
+                                class="grid grid-cols-7 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B7E73] mb-2">
                                 <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                             </div>
-                            <div class="grid grid-cols-7 gap-1">
+
+                            <div class="grid grid-cols-7 gap-2">
                                 <template x-for="(item, idx) in modalCalendarDays" :key="idx">
                                     <div>
                                         <template x-if="item.isCurrentMonth">
-                                            <button @click="if(!item.isPast) selectedCalendarDate = item.dateStr"
+                                            <button type="button"
+                                                @click="if (!item.isPast) selectedCalendarDate = item.dateStr"
                                                 :disabled="item.isPast"
-                                                :class="{
-                                                    'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400 line-through': item
-                                                        .isPast,
-                                                    'ring-2 ring-[#1C3627] font-bold': selectedCalendarDate === item
-                                                        .dateStr && !item.isPast,
-                                                    'bg-red-500 text-white font-bold': item.isBooked && !item.isPast,
-                                                    'bg-emerald-50 text-emerald-800 hover:bg-emerald-100': !item
-                                                        .isBooked && !item.isPast
-                                                }"
-                                                class="w-full h-9 text-[11px] rounded-sm flex flex-col items-center justify-center transition-all">
-                                                <span x-text="item.day"></span>
-                                                <span x-show="item.isBooked && !item.isPast"
-                                                    class="text-[7px] uppercase block leading-none">Booked</span>
+                                                :class="item.dateStr ? (selectedCalendarDate === item.dateStr && !item.isPast ?
+                                                        'bg-[#1C3627] text-white ring-2 ring-[#1C3627]/30' :
+                                                        item.isBooked && !item.isPast ?
+                                                        'bg-[#FCE9E9] text-[#7A2B2B] hover:bg-[#F7DADA]' :
+                                                        'bg-white text-[#1C3627] hover:bg-[#EAF0EB]') :
+                                                    'bg-transparent text-gray-300 cursor-not-allowed'"
+                                                class="relative w-full h-14 rounded-xl border border-[#E5DDD0] text-xs font-semibold transition-all">
+                                                <span x-text="item.day || ''" class="block"></span>
+                                                <template x-if="item.isBooked && !item.isPast">
+                                                    <span
+                                                        class="absolute bottom-1 right-1 text-[9px] rounded-full bg-[#B89462] text-white px-1.5 py-0.5"
+                                                        x-text="item.bookings.length"></span>
+                                                </template>
                                             </button>
                                         </template>
                                         <template x-if="!item.isCurrentMonth">
-                                            <div class="w-full h-9 bg-gray-50/50 rounded-sm"></div>
+                                            <div
+                                                class="w-full h-14 rounded-xl border border-transparent bg-gray-50/50">
+                                            </div>
                                         </template>
                                     </div>
                                 </template>

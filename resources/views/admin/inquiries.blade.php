@@ -47,22 +47,75 @@
 
     // Action Modal State
     actionModalOpen: false,
+    detailsModalOpen: false,
     selectedInquiryId: null,
     selectedCustomer: '',
     selectedInquiryStatus: '',
+    selectedVenue: '',
+    selectedBookingDate: '',
+    selectedTimeRange: '',
+    selectedTotalCost: '',
+    selectedEmail: '',
+    selectedContact: '',
     hasPaymentProof: false,
     hasPaymentRequested: false,
     highlightId: {{ $highlightId ?? 'null' }},
     isHighlighted(id) {
         return this.highlightId !== null && Number(this.highlightId) === Number(id);
     },
-    openActionModal(id, customer, proof, paymentRequested, status = '') {
+    openActionModal(id, customer, proof, paymentRequested, status = '', venue = '', bookingDate = '', timeRange = '', totalCost = '', email = '', contact = '') {
         this.selectedInquiryId = id;
         this.selectedCustomer = customer;
         this.selectedInquiryStatus = status;
+        this.selectedVenue = venue;
+        this.selectedBookingDate = bookingDate;
+        this.selectedTimeRange = timeRange;
+        this.selectedTotalCost = totalCost;
+        this.selectedEmail = email;
+        this.selectedContact = contact;
         this.hasPaymentProof = Boolean(proof);
         this.hasPaymentRequested = Boolean(paymentRequested);
         this.actionModalOpen = true;
+    },
+
+    showInquiryDetails(customer, venue, bookingDate, timeRange, status, totalCost, email, contact) {
+        this.selectedCustomer = customer;
+        this.selectedVenue = venue;
+        this.selectedBookingDate = bookingDate;
+        this.selectedTimeRange = timeRange;
+        this.selectedInquiryStatus = status;
+        this.selectedTotalCost = totalCost;
+        this.selectedEmail = email;
+        this.selectedContact = contact;
+        this.detailsModalOpen = true;
+    },
+
+    confirmReceiptUpload(form) {
+        if (!form) return;
+
+        const fileInput = form.querySelector('input[name=\'payment_proof\']');
+        if (!fileInput || !fileInput.files || !fileInput.files.length) {
+            return;
+        }
+
+        Swal.fire({
+            title: 'Confirm receipt upload?',
+            text: 'This will attach the payment proof to this inquiry.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, upload',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#1C3627',
+            cancelButtonColor: '#d1d5db',
+            customClass: {
+                popup: 'rounded-2xl',
+                confirmButton: 'rounded-xl text-xs px-4 py-2 font-semibold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
     }
 }">
 
@@ -124,6 +177,18 @@
                                         $formattedBookingDate = $item->booking_date
                                             ? \Carbon\Carbon::parse($item->booking_date)->format('F j, Y')
                                             : 'N/A';
+
+                                        $venueRate = \App\Models\Venue::find($item->venue_id)?->price_per_hour ?? 0;
+                                        $hours = 0;
+                                        if ($item->start_time && $item->end_time) {
+                                            $startSeconds = strtotime($item->start_time);
+                                            $endSeconds = strtotime($item->end_time);
+                                            if ($endSeconds > $startSeconds) {
+                                                $hours = ($endSeconds - $startSeconds) / 3600;
+                                            }
+                                        }
+                                        $totalCost = max($hours, 0) * (float) $venueRate;
+                                        $totalCostLabel = '₱' . number_format($totalCost, 2);
                                     @endphp
                                     <tr class="transition-colors"
                                         :class="isHighlighted({{ $item->id }}) ?
@@ -162,29 +227,34 @@
                                             @endif
                                         </td>
 
-                                        <td class="py-4 px-3">
+                                        <td class="py-4 px-3 text-left">
                                             @if ($item->payment_proof)
-                                                <button type="button"
-                                                    @click="openReceipt('{{ asset('storage/' . $item->payment_proof) }}', '{{ addslashes($item->full_name) }}')"
-                                                    class="inline-flex items-center gap-1.5 text-[#1C3627] hover:text-[#2E4A3B] font-semibold text-xs underline decoration-[#E5DDD0] underline-offset-2 cursor-pointer">
-                                                    <svg class="w-3.5 h-3.5 text-[#B89A62]" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                    View Receipt
-                                                </button>
+                                                <div class="flex justify-start w-full">
+                                                    <button type="button"
+                                                        @click="openReceipt('{{ asset('storage/' . $item->payment_proof) }}', '{{ addslashes($item->full_name) }}')"
+                                                        class="inline-flex items-center justify-start gap-1.5 text-[#1C3627] hover:text-[#2E4A3B] font-semibold text-xs underline decoration-[#E5DDD0] underline-offset-2 cursor-pointer">
+                                                        <svg class="w-3.5 h-3.5 text-[#B89A62]" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                        View Receipt
+                                                    </button>
+                                                </div>
                                             @else
                                                 <form action="{{ route('admin.inquiries.upload-proof', $item->id) }}"
                                                     method="POST" enctype="multipart/form-data"
-                                                    class="flex items-center gap-1.5">
+                                                    class="flex w-full items-center justify-start gap-1.5"
+                                                    @submit.prevent="confirmReceiptUpload($event.currentTarget)">
                                                     @csrf
-                                                    <input type="file" name="payment_proof" required
-                                                        class="text-[10px] text-[#6B7E73] file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-[#F7F4EE] file:text-[#1C3627] hover:file:bg-[#E5DDD0] cursor-pointer">
-                                                    <button type="submit"
+                                                    <input type="file" name="payment_proof" required class="hidden"
+                                                        x-ref="receiptFile{{ $item->id }}"
+                                                        @change="if ($event.target.files && $event.target.files.length) { $event.target.form.dispatchEvent(new Event('submit', { cancelable: true })); }">
+                                                    <button type="button"
+                                                        @click="$refs.receiptFile{{ $item->id }}.click()"
                                                         class="px-2.5 py-1.5 bg-[#1C3627] text-white rounded-full text-[10px] font-semibold uppercase tracking-[0.14em] hover:bg-[#2E4A3B]">Upload</button>
                                                 </form>
                                             @endif
@@ -205,15 +275,17 @@
                                         </td>
 
                                         <td class="py-4 px-3 text-right">
-                                            <button type="button"
-                                                @click="openActionModal({{ $item->id }}, '{{ addslashes($item->full_name) }}', {{ $item->payment_proof ? 'true' : 'false' }}, {{ $item->payment_requested_at ? 'true' : 'false' }}, '{{ $item->status }}')"
-                                                class="w-9 h-9 inline-flex items-center justify-center bg-[#F7F4EE] hover:bg-[#1C3627] text-[#1C3627] hover:text-white rounded-full transition-all border border-[#E5DDD0] shadow-sm">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                                                </svg>
-                                            </button>
+                                            <div class="flex items-center justify-end">
+                                                <button type="button"
+                                                    @click="openActionModal({{ $item->id }}, '{{ addslashes($item->full_name) }}', {{ $item->payment_proof ? 'true' : 'false' }}, {{ $item->payment_requested_at ? 'true' : 'false' }}, '{{ $item->status }}', '{{ addslashes($item->venue_title) }}', '{{ addslashes($formattedBookingDate) }}', '{{ addslashes($item->start_time ? \Carbon\Carbon::parse($item->start_time)->format('g:i A') : '') }} - {{ addslashes($item->end_time ? \Carbon\Carbon::parse($item->end_time)->format('g:i A') : '') }}', '{{ addslashes($totalCostLabel) }}', '{{ addslashes($item->email) }}', '{{ addslashes($item->email_contact) }}')"
+                                                    class="w-9 h-9 inline-flex items-center justify-center bg-[#F7F4EE] hover:bg-[#1C3627] text-[#1C3627] hover:text-white rounded-full transition-all border border-[#E5DDD0] shadow-sm">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -275,6 +347,77 @@
         <!-- Modals -->
         <x-admin.receipt-modal />
         <x-admin.action-modal />
+
+        <div x-show="detailsModalOpen" x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+
+            <div class="bg-white border border-[#E5DDD0] rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl"
+                @click.outside="detailsModalOpen = false">
+                <div class="flex items-center justify-between border-b border-[#E5DDD0] px-6 py-4">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-[#B89462]">Reservation</p>
+                        <h3 class="mt-1 text-lg font-bold text-[#1C3627]">Details</h3>
+                    </div>
+                    <button @click="detailsModalOpen = false"
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4 text-sm text-[#1C3627]">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0]">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Customer
+                            </div>
+                            <div class="mt-1 font-semibold" x-text="selectedCustomer"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0]">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Status</div>
+                            <div class="mt-1 font-semibold" x-text="selectedInquiryStatus"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0] sm:col-span-2">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Venue</div>
+                            <div class="mt-1 font-semibold" x-text="selectedVenue"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0]">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Booking Date
+                            </div>
+                            <div class="mt-1 font-semibold" x-text="selectedBookingDate"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0]">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Time</div>
+                            <div class="mt-1 font-semibold" x-text="selectedTimeRange"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0]">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Email</div>
+                            <div class="mt-1 font-semibold break-all" x-text="selectedEmail"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0]">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Contact</div>
+                            <div class="mt-1 font-semibold" x-text="selectedContact"></div>
+                        </div>
+                        <div class="bg-[#F7F4EE] rounded-xl p-3 border border-[#E5DDD0] sm:col-span-2">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7E73]">Total Cost
+                            </div>
+                            <div class="mt-1 text-base font-bold text-[#1C3627]" x-text="selectedTotalCost"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-[#E5DDD0] px-6 py-4 flex justify-end">
+                    <button @click="detailsModalOpen = false"
+                        class="px-4 py-2 bg-[#1C3627] hover:bg-[#2E4A3B] text-white text-xs font-semibold rounded-xl transition-all">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- SweetAlert Session Alerts -->
         @if (session('success'))
