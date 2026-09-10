@@ -104,7 +104,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Protected Admin Routes (Uses custom AdminAuthenticate middleware)
     Route::middleware(['admin.auth'])->group(function () {
         Route::get('/dashboard', function () {
-            return view('admin.dashboard');
+            $totalInquiries = Inquiry::count();
+            $pendingInquiries = Inquiry::where('status', 'pending')->count();
+            $verifiedPayments = Inquiry::where('status', 'approved')->count();
+            $activeVenues = Venue::where('is_active', true)->count();
+            $recentPendingInquiries = Inquiry::query()
+                ->where('status', 'pending')
+                ->latest()
+                ->limit(5)
+                ->get();
+
+            return view('admin.dashboard', compact(
+                'totalInquiries',
+                'pendingInquiries',
+                'verifiedPayments',
+                'activeVenues',
+                'recentPendingInquiries'
+            ));
         })->name('dashboard');
 
         // Admin Inquiries Actions

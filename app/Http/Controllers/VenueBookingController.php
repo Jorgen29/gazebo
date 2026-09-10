@@ -7,6 +7,7 @@ use App\Models\Inquiry;
 use App\Models\Venue;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use App\Mail\InquiryStatusNotification;
 use App\Mail\NewInquiryNotification;
 use App\Mail\PaymentInstructionsMail;
 use Carbon\Carbon;
@@ -310,10 +311,13 @@ class VenueBookingController extends Controller
         ]);
 
         $inquiry = Inquiry::create($validated);
+        $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
+        $inquiry->save();
 
-        // Send email notification to Admin
+        // Send email notification to Admin using configured sender address
         try {
-            Mail::to('bacolodjorgen29@gmail.com')->send(new NewInquiryNotification($inquiry));
+            $adminEmail = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
+            Mail::to($adminEmail)->send(new NewInquiryNotification($inquiry));
         } catch (\Exception $e) {
             // Log error if mail server fails
             \Log::error('Mail sending failed: ' . $e->getMessage());
@@ -347,6 +351,11 @@ class VenueBookingController extends Controller
             return back()->with('error', 'Customer email address is missing.');
         }
 
+        if (empty($inquiry->booking_reference)) {
+            $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
+            $inquiry->save();
+        }
+
         Mail::to($inquiry->email)->send(new PaymentInstructionsMail($inquiry));
 
         $inquiry->update([
@@ -378,10 +387,25 @@ class VenueBookingController extends Controller
     // Update Inquiry status
     public function updateStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:pending,approved,declined']);
+        $request->validate(['status' => 'required|in:pending,approved,declined,cancelled']);
 
         $inquiry = Inquiry::findOrFail($id);
-        $inquiry->update(['status' => $request->status]);
+        $newStatus = $request->status;
+        $inquiry->update(['status' => $newStatus]);
+
+        if (!empty($inquiry->email) && in_array($newStatus, ['approved', 'declined', 'cancelled'], true)) {
+            try {
+                $notification = (new InquiryStatusNotification($inquiry, $newStatus))
+                    ->from(
+                        config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+                        config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'))
+                    );
+
+                Mail::to($inquiry->email)->send($notification);
+            } catch (\Exception $e) {
+                \Log::error('Inquiry status email failed: ' . $e->getMessage());
+            }
+        }
 
         return back()->with('success', 'Inquiry status updated successfully.');
     }

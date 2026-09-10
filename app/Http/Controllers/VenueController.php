@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Inquiry;
 use App\Models\Venue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +14,29 @@ class VenueController extends Controller
      */
     public function index(Request $request)
     {
-        $venues = Venue::latest()->get();
+        $venues = Venue::latest()->get()->map(function (Venue $venue) {
+            $bookings = Inquiry::query()
+                ->where('venue_id', (string) $venue->id)
+                ->where('status', 'approved')
+                ->get()
+                ->map(function ($item) {
+                    $startTime = \Carbon\Carbon::parse($item->start_time)->format('g:i A');
+                    $endTime = \Carbon\Carbon::parse($item->end_time)->format('g:i A');
+
+                    return [
+                        'date' => \Carbon\Carbon::parse($item->booking_date)->format('Y-m-d'),
+                        'start' => \Carbon\Carbon::parse($item->start_time)->format('H:i'),
+                        'end' => \Carbon\Carbon::parse($item->end_time)->format('H:i'),
+                        'label' => "{$startTime} - {$endTime} ({$item->full_name})",
+                    ];
+                })
+                ->values()
+                ->all();
+
+            return array_merge($venue->toArray(), [
+                'bookings' => $bookings,
+            ]);
+        })->all();
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($venues);

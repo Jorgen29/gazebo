@@ -17,7 +17,7 @@ return new class extends Migration
             $table->time('end_time');
             $table->string('full_name');
             $table->string('email_contact');
-            $table->enum('status', ['pending', 'approved', 'declined'])->default('pending');
+            $table->string('status')->default('pending');
             $table->timestamps();
         });
     }
