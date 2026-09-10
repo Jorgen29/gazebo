@@ -192,147 +192,171 @@
 
     closeCalendar() {
         this.showCalendar = false;
+    },
+
+    formatCurrency(value) {
+        const numericValue = Number(value || 0);
+        return new Intl.NumberFormat('en-PH', {
+            style: 'currency',
+            currency: 'PHP',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(numericValue);
+    },
+
+    get totalHours() {
+        if (!this.selectedStartTime || !this.selectedEndTime) {
+            return 0;
+        }
+
+        const hours = (this.toMinutes(this.selectedEndTime) - this.toMinutes(this.selectedStartTime)) / 60;
+        return hours > 0 ? Number(hours.toFixed(2)) : 0;
+    },
+
+    get totalPrice() {
+        const priceText = String(this.space?.price ?? '');
+        const match = priceText.match(/[\d,]+(?:\.\d+)?/);
+        const hourlyRate = match ? Number(match[0].replace(/,/g, '')) : 0;
+        return hourlyRate * this.totalHours;
     }
-}">
+}" <x-header />
 
-    <x-header />
+<!-- Breadcrumb & Title Header -->
+<section class="bg-[#1C3627] text-white py-10 px-6 sm:px-12">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <a href="{{ route('inquiry.index') }}"
+                class="text-[10px] uppercase tracking-widest text-[#B89462] hover:underline flex items-center gap-1 mb-1">
+                &larr; Back to Venue Catalog
+            </a>
+            <h1 class="font-serif text-3xl sm:text-4xl" x-text="'Book ' + space.title"></h1>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md px-4 py-2 rounded border border-white/20 text-right">
+            <span class="text-[10px] text-gray-300 block uppercase">Rate Strategy</span>
+            <span class="text-sm font-bold text-[#B89462]" x-text="space.price"></span>
+        </div>
+    </div>
+</section>
 
-    <!-- Breadcrumb & Title Header -->
-    <section class="bg-[#1C3627] text-white py-10 px-6 sm:px-12">
-        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-                <a href="{{ route('inquiry.index') }}"
-                    class="text-[10px] uppercase tracking-widest text-[#B89462] hover:underline flex items-center gap-1 mb-1">
-                    &larr; Back to Venue Catalog
-                </a>
-                <h1 class="font-serif text-3xl sm:text-4xl" x-text="'Book ' + space.title"></h1>
+<main class="py-12 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+    <!-- Left Column: Media & Calendar -->
+    <div class="lg:col-span-7 space-y-8">
+        <div class="bg-white border border-gray-200 rounded-sm p-4 space-y-3 shadow-sm">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#1C3627]">Venue Showcase Gallery</h3>
+            <div class="relative h-72 sm:h-96 bg-black rounded-sm overflow-hidden">
+                <img :src="space.gallery[activeImageIndex]" class="w-full h-full object-cover">
             </div>
-            <div class="bg-white/10 backdrop-blur-md px-4 py-2 rounded border border-white/20 text-right">
-                <span class="text-[10px] text-gray-300 block uppercase">Rate Strategy</span>
-                <span class="text-sm font-bold text-[#B89462]" x-text="space.price"></span>
+            <div class="flex items-center gap-2 overflow-x-auto pt-1">
+                <template x-for="(img, idx) in space.gallery" :key="idx">
+                    <button @click="activeImageIndex = idx"
+                        :class="activeImageIndex === idx ? 'ring-2 ring-[#1C3627]' : 'opacity-60'"
+                        class="w-20 h-14 rounded-sm overflow-hidden shrink-0">
+                        <img :src="img" class="w-full h-full object-cover">
+                    </button>
+                </template>
             </div>
         </div>
-    </section>
 
-    <main class="py-12 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-        <!-- Left Column: Media & Calendar -->
-        <div class="lg:col-span-7 space-y-8">
-            <div class="bg-white border border-gray-200 rounded-sm p-4 space-y-3 shadow-sm">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-[#1C3627]">Venue Showcase Gallery</h3>
-                <div class="relative h-72 sm:h-96 bg-black rounded-sm overflow-hidden">
-                    <img :src="space.gallery[activeImageIndex]" class="w-full h-full object-cover">
-                </div>
-                <div class="flex items-center gap-2 overflow-x-auto pt-1">
-                    <template x-for="(img, idx) in space.gallery" :key="idx">
-                        <button @click="activeImageIndex = idx"
-                            :class="activeImageIndex === idx ? 'ring-2 ring-[#1C3627]' : 'opacity-60'"
-                            class="w-20 h-14 rounded-sm overflow-hidden shrink-0">
-                            <img :src="img" class="w-full h-full object-cover">
-                        </button>
+        <div class="bg-white border border-gray-200 rounded-sm p-6 space-y-4 shadow-sm">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#1C3627]">Room Specifications & Included
+                Amenities</h3>
+            <p class="text-xs text-gray-600 leading-relaxed font-light" x-text="space.description"></p>
+            <div class="pt-2 border-t border-gray-100">
+                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
+                    <template x-for="feature in space.inclusions" :key="feature">
+                        <li class="flex items-center gap-2 bg-[#FBF9F5] p-2 rounded border border-gray-100">
+                            <span class="text-[#B89462] font-bold">✓</span>
+                            <span x-text="feature"></span>
+                        </li>
                     </template>
-                </div>
+                </ul>
             </div>
-
-            <div class="bg-white border border-gray-200 rounded-sm p-6 space-y-4 shadow-sm">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-[#1C3627]">Room Specifications & Included
-                    Amenities</h3>
-                <p class="text-xs text-gray-600 leading-relaxed font-light" x-text="space.description"></p>
-                <div class="pt-2 border-t border-gray-100">
-                    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
-                        <template x-for="feature in space.inclusions" :key="feature">
-                            <li class="flex items-center gap-2 bg-[#FBF9F5] p-2 rounded border border-gray-100">
-                                <span class="text-[#B89462] font-bold">✓</span>
-                                <span x-text="feature"></span>
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-            </div>
-
-
         </div>
 
-        <!-- Right Column: Booking Form -->
-        <div class="lg:col-span-5 space-y-6">
-            <div class="bg-white border border-[#B89462]/40 rounded-sm p-6 sm:p-8 shadow-xl space-y-6 sticky top-6">
-                <div>
-                    <span class="text-[10px] uppercase tracking-widest text-[#B89462] font-semibold block">RESERVATION
-                        DETAILS</span>
-                    <h2 class="font-serif text-2xl text-[#3b4d3c]">Select Date & Time Range</h2>
+
+    </div>
+
+    <!-- Right Column: Booking Form -->
+    <div class="lg:col-span-5 space-y-6">
+        <div class="bg-white border border-[#B89462]/40 rounded-sm p-6 sm:p-8 shadow-xl space-y-6 sticky top-6">
+            <div>
+                <span class="text-[10px] uppercase tracking-widest text-[#B89462] font-semibold block">RESERVATION
+                    DETAILS</span>
+                <h2 class="font-serif text-2xl text-[#3b4d3c]">Select Date & Time Range</h2>
+            </div>
+
+            <!-- Schedule Breakdown -->
+            <div class="bg-[#FBF9F5] p-3.5 rounded border border-gray-200 space-y-4">
+                <div class="hidden">
+                    <span class="font-bold text-[#1C3627] block uppercase tracking-wider mb-2">Selected Date</span>
+                    <div class="rounded border border-[#E5DDD0] bg-white px-3 py-2.5">
+                        <strong class="text-[#B89462]" x-text="selectedDate"></strong>
+                    </div>
                 </div>
 
-                <!-- Schedule Breakdown -->
-                <div class="bg-[#FBF9F5] p-3.5 rounded border border-gray-200 space-y-3">
-                    <div class="flex items-center justify-between gap-2 text-xs">
-                        <span class="font-bold text-[#1C3627]">Schedule on Selected Date:</span>
-                        <div class="flex items-center gap-2">
-                            <strong class="text-[#B89462]" x-text="selectedDate"></strong>
-                            <button type="button" @click="toggleCalendar()"
-                                class="w-7 h-7 rounded border border-[#1C3627]/20 bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#1C3627] hover:text-white transition-all"
-                                aria-label="Open availability calendar">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="1.8" class="w-3.5 h-3.5">
-                                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
-                                    <path d="M8 3v4M16 3v4M3 10h18"></path>
-                                </svg>
-                            </button>
-                        </div>
+                <div class="rounded-2xl border border-[#E5DDD0] bg-[#F7F4EE] p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <button type="button"
+                            @click="if (modalMonth === 0) { modalMonth = 11; modalYear--; } else { modalMonth--; }"
+                            class="w-9 h-9 rounded-full border border-[#E5DDD0] bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#EAF0EB] transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <span class="text-sm font-bold text-[#1C3627] uppercase tracking-[0.12em]"
+                            x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
+                        <button type="button"
+                            @click="if (modalMonth === 11) { modalMonth = 0; modalYear++; } else { modalMonth++; }"
+                            class="w-9 h-9 rounded-full border border-[#E5DDD0] bg-white flex items-center justify-center text-[#1C3627] hover:bg-[#EAF0EB] transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
                     </div>
 
-                    <div x-show="showCalendar" x-transition:enter="transition ease-out duration-150"
-                        x-transition:enter-start="opacity-0 -translate-y-1"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-100"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 -translate-y-1"
-                        class="bg-white border border-gray-200 rounded-sm p-3 shadow-sm">
-                        <div class="flex items-center justify-between border-b pb-2 mb-3">
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-[#1C3627]">Availability
-                            </div>
-                            <div class="flex items-center space-x-1">
-                                <button type="button"
-                                    @click="if(modalMonth === 0){ modalMonth=11; modalYear--; }else{ modalMonth--; }"
-                                    class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&larr;</button>
-                                <span class="text-[10px] font-semibold px-1 text-gray-700"
-                                    x-text="monthNames[modalMonth].substring(0,3) + ' ' + modalYear"></span>
-                                <button type="button"
-                                    @click="if(modalMonth === 11){ modalMonth=0; modalYear++; }else{ modalMonth++; }"
-                                    class="w-6 h-6 rounded border bg-white flex items-center justify-center text-xs">&rarr;</button>
-                            </div>
-                        </div>
+                    <div
+                        class="grid grid-cols-7 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B7E73] mb-2">
+                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
 
-                        <div class="grid grid-cols-7 text-center text-[8px] font-semibold text-gray-400 uppercase mb-2">
-                            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                        </div>
-                        <div class="grid grid-cols-7 gap-1.5">
-                            <template x-for="(item, idx) in calendarDays" :key="idx">
-                                <div>
-                                    <template x-if="item.isCurrentMonth">
-                                        <button type="button"
-                                            @click="if(!item.isPast){ selectedDate = item.dateStr; closeCalendar(); }"
-                                            :disabled="item.isPast"
-                                            :class="{
-                                                'opacity-30 cursor-not-allowed bg-gray-100 text-gray-400 line-through': item
-                                                    .isPast,
-                                                'ring-2 ring-[#1C3627] font-bold': selectedDate === item.dateStr && !
-                                                    item.isPast,
-                                                'bg-red-500 text-white font-bold': item.isBooked && !item.isPast,
-                                                'bg-emerald-50 text-emerald-800 hover:bg-emerald-100': !item.isBooked &&
-                                                    !item.isPast
-                                            }"
-                                            class="w-full h-9 text-[10px] rounded-sm flex flex-col items-center justify-center transition-all">
-                                            <span x-text="item.day"></span>
-                                            <span x-show="item.isBooked && !item.isPast"
-                                                class="text-[6px] uppercase leading-none block">Booked</span>
-                                        </button>
-                                    </template>
-                                    <template x-if="!item.isCurrentMonth">
-                                        <div class="w-full h-9 bg-gray-50/50 rounded-sm"></div>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
+                    <div class="grid grid-cols-7 gap-2">
+                        <template x-for="(item, idx) in calendarDays" :key="idx">
+                            <div>
+                                <template x-if="item.isCurrentMonth">
+                                    <button type="button" @click="if(!item.isPast){ selectedDate = item.dateStr; }"
+                                        :disabled="item.isPast"
+                                        :class="item.dateStr ? (selectedDate === item.dateStr && !item.isPast ?
+                                                'bg-[#1C3627] text-white ring-2 ring-[#1C3627]/30' :
+                                                item.isBooked && !item.isPast ?
+                                                'bg-[#FCE9E9] text-[#7A2B2B] hover:bg-[#F7DADA]' :
+                                                'bg-white text-[#1C3627] hover:bg-[#EAF0EB]') :
+                                            'bg-transparent text-gray-300 cursor-not-allowed'"
+                                        class="relative w-full h-14 rounded-xl border border-[#E5DDD0] text-xs font-semibold transition-all">
+                                        <span x-text="item.day || ''" class="block"></span>
+                                        <template x-if="item.isBooked && !item.isPast">
+                                            <span
+                                                class="absolute bottom-1 right-1 text-[9px] rounded-full bg-[#B89462] text-white px-1.5 py-0.5"
+                                                x-text="item.bookings.length"></span>
+                                        </template>
+                                    </button>
+                                </template>
+                                <template x-if="!item.isCurrentMonth">
+                                    <div class="w-full h-14 rounded-xl border border-transparent bg-gray-50/50">
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="rounded border border-gray-200 bg-white p-3">
+                    <div class="flex items-center justify-between border-b pb-1.5 mb-2">
+                        <span class="text-[10px] font-bold uppercase text-[#1C3627]">Booked Slots</span>
+                        <span class="text-[10px] font-semibold text-[#B89462]"
+                            x-text="dateBookings.length + ' reserved'"></span>
                     </div>
 
                     <template x-if="dateBookings.length > 0">
@@ -348,173 +372,177 @@
                     </template>
 
                     <template x-if="dateBookings.length === 0">
-                        <p class="text-xs text-emerald-700 font-medium pt-1">✓ No prior bookings on this date. Full day
-                            availability!</p>
+                        <div
+                            class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2 rounded text-xs text-center font-medium">
+                            ✓ Fully Available on this Date
+                        </div>
                     </template>
                 </div>
+            </div>
 
-                <div x-show="bookingSubmitted" x-cloak
-                    class="p-4 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 space-y-1">
-                    <strong>✓ Reservation Request Logged!</strong>
-                    <p>Our team will confirm your booking for <span x-text="selectedDate"></span> from <span
-                            x-text="selectedStartTime"></span> to <span x-text="selectedEndTime"></span> within 24
-                        hours.</p>
+            <div x-show="bookingSubmitted" x-cloak
+                class="p-4 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 space-y-1">
+                <strong>✓ Reservation Request Logged!</strong>
+                <p>Our team will confirm your booking for <span x-text="selectedDate"></span> from <span
+                        x-text="selectedStartTime"></span> to <span x-text="selectedEndTime"></span> within 24
+                    hours.</p>
+            </div>
+
+            <form action="{{ route('venue.submit') }}" method="POST" class="space-y-4">
+                @csrf
+
+                <!-- Hidden space details -->
+                <input type="hidden" name="venue_id" :value="space.id">
+                <input type="hidden" name="venue_title" :value="space.title">
+
+                <input type="hidden" name="booking_date" :value="selectedDate">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label
+                            class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Start
+                            Time *</label>
+                        <select name="start_time" x-model="selectedStartTime"
+                            class="w-full text-xs px-2.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]"
+                            required>
+                            <template x-for="opt in availableStartOptions" :key="opt.value">
+                                <option :value="opt.value" :disabled="!opt.allowed" x-text="opt.label">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">End
+                            Time *</label>
+                        <select name="end_time" x-model="selectedEndTime"
+                            class="w-full text-xs px-2.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]"
+                            required>
+                            <template x-for="opt in availableEndOptions" :key="opt.value">
+                                <option :value="opt.value" x-text="opt.label"></option>
+                            </template>
+                        </select>
+                    </div>
                 </div>
 
-                <form action="{{ route('venue.submit') }}" method="POST" class="space-y-4">
-                    @csrf
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Full
+                        Name *</label>
+                    <input type="text" name="full_name" required placeholder="e.g. Maria Santos"
+                        class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]">
+                </div>
 
-                    <!-- Hidden space details -->
-                    <input type="hidden" name="venue_id" :value="space.id">
-                    <input type="hidden" name="venue_title" :value="space.title">
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Email
+                        *</label>
+                    <input type="email" name="email" required placeholder="maria@example.com"
+                        class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]">
+                </div>
 
-                    <div>
-                        <label
-                            class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Target
-                            Date *</label>
-                        <input type="date" name="booking_date" :min="todayStr" x-model="selectedDate"
-                            class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]"
-                            required>
-                    </div>
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Contact
+                        Number *</label>
+                    <input type="text" name="email_contact" required placeholder="09171234567"
+                        class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]">
+                </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label
-                                class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Start
-                                Time *</label>
-                            <select name="start_time" x-model="selectedStartTime"
-                                class="w-full text-xs px-2.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]"
-                                required>
-                                <template x-for="opt in availableStartOptions" :key="opt.value">
-                                    <option :value="opt.value" :disabled="!opt.allowed" x-text="opt.label">
-                                    </option>
-                                </template>
-                            </select>
-                        </div>
+                <div class="rounded border border-[#E5DDD0] bg-[#F7F4EE] p-3 flex items-center justify-between gap-3">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-[#1C3627]">Reservation
+                        Total</span>
+                    <span id="booking-total-value" class="text-base font-bold text-[#B89462]"
+                        x-text="formatCurrency(totalPrice)"></span>
+                </div>
 
-                        <div>
-                            <label
-                                class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">End
-                                Time *</label>
-                            <select name="end_time" x-model="selectedEndTime"
-                                class="w-full text-xs px-2.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]"
-                                required>
-                                <template x-for="opt in availableEndOptions" :key="opt.value">
-                                    <option :value="opt.value" x-text="opt.label"></option>
-                                </template>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Full
-                            Name *</label>
-                        <input type="text" name="full_name" required placeholder="e.g. Maria Santos"
-                            class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]">
-                    </div>
-
-                    <div>
-                        <label
-                            class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Email
-                            *</label>
-                        <input type="email" name="email" required placeholder="maria@example.com"
-                            class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]">
-                    </div>
-
-                    <div>
-                        <label
-                            class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1">Contact
-                            Number *</label>
-                        <input type="text" name="email_contact" required placeholder="09171234567"
-                            class="w-full text-xs px-3.5 py-2.5 rounded-sm border border-gray-200 bg-[#FBF9F5]">
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-[#1C3627] text-white py-3.5 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#2a4d38] transition-all shadow-md">
-                        CONFIRM & SUBMIT RESERVATION &rarr;
-                    </button>
-                </form>
-            </div>
+                <button type="submit"
+                    class="w-full bg-[#1C3627] text-white py-3.5 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#2a4d38] transition-all shadow-md">
+                    CONFIRM & SUBMIT RESERVATION &rarr;
+                </button>
+            </form>
         </div>
-    </main>
+    </div>
+</main>
 
-    <footer class="bg-[#162B20] text-[#E5DDD0] py-8 text-center text-xs">
-        <p>&copy; 2026 The Gazebo Events Place. All Rights Reserved.</p>
-    </footer>
+<footer class="bg-[#162B20] text-[#E5DDD0] py-8 text-center text-xs">
+    <p>&copy; 2026 The Gazebo Events Place. All Rights Reserved.</p>
+</footer>
 
-    @if (session('success'))
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                Swal.fire({
-                    title: 'Reservation Submitted!',
-                    text: '{{ session('success') }}',
-                    icon: 'success',
-                    confirmButtonText: 'Okay',
-                    confirmButtonColor: '#1C3627',
-                    background: '#ffffff',
-                    color: '#1f2937',
-                    customClass: {
-                        popup: 'rounded-sm shadow-xl'
-                    }
-                });
-            });
-        </script>
-    @endif
-
-    @if ($errors->any())
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const errorMessages = @json($errors->all());
-                Swal.fire({
-                    title: 'Please check your details',
-                    html: '<ul style="text-align:left; padding-left:1.2rem; margin:0;">' + errorMessages.map(
-                        function(message) {
-                            return '<li>' + message + '</li>';
-                        }).join('') + '</ul>',
-                    icon: 'error',
-                    confirmButtonText: 'Try Again',
-                    confirmButtonColor: '#1C3627',
-                    background: '#ffffff',
-                    color: '#1f2937',
-                    customClass: {
-                        popup: 'rounded-sm shadow-xl'
-                    }
-                });
-            });
-        </script>
-    @endif
-
+@if (session('success'))
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const bookingForm = document.querySelector('form[action="{{ route('venue.submit') }}"]');
-
-            if (!bookingForm) {
-                return;
-            }
-
-            bookingForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-
-                Swal.fire({
-                    title: 'Confirm reservation?',
-                    text: 'Please make sure the date and time are correct before submitting.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, submit',
-                    cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#1C3627',
-                    cancelButtonColor: '#d1d5db',
-                    customClass: {
-                        popup: 'rounded-sm shadow-xl'
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        bookingForm.submit();
-                    }
-                });
+            Swal.fire({
+                title: 'Reservation Submitted!',
+                text: '{{ session('success') }}',
+                icon: 'success',
+                confirmButtonText: 'Okay',
+                confirmButtonColor: '#1C3627',
+                background: '#ffffff',
+                color: '#1f2937',
+                customClass: {
+                    popup: 'rounded-sm shadow-xl'
+                }
             });
         });
     </script>
+@endif
+
+@if ($errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const errorMessages = @json($errors->all());
+            Swal.fire({
+                title: 'Please check your details',
+                html: '<ul style="text-align:left; padding-left:1.2rem; margin:0;">' + errorMessages.map(
+                    function(message) {
+                        return '<li>' + message + '</li>';
+                    }).join('') + '</ul>',
+                icon: 'error',
+                confirmButtonText: 'Try Again',
+                confirmButtonColor: '#1C3627',
+                background: '#ffffff',
+                color: '#1f2937',
+                customClass: {
+                    popup: 'rounded-sm shadow-xl'
+                }
+            });
+        });
+    </script>
+@endif
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const bookingForm = document.querySelector('form[action="{{ route('venue.submit') }}"]');
+
+        if (!bookingForm) {
+            return;
+        }
+
+        bookingForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const totalElement = document.getElementById('booking-total-value');
+            const totalText = totalElement ? totalElement.textContent.trim() : '₱0.00';
+
+            Swal.fire({
+                title: 'Confirm reservation?',
+                html: 'Please confirm your total reservation cost of <strong>' + totalText +
+                    '</strong>.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, submit',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#1C3627',
+                cancelButtonColor: '#d1d5db',
+                customClass: {
+                    popup: 'rounded-sm shadow-xl'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    bookingForm.submit();
+                }
+            });
+        });
+    });
+</script>
 </body>
 
 </html>
