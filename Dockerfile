@@ -1,11 +1,11 @@
 FROM php:8.3-fpm
 
-# Install system dependencies including libpq-dev for PostgreSQL
+# Install system dependencies including libpq-dev for Postgres & libzip-dev for zip
 RUN apt-get update && apt-get install -y \
-    git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx libpq-dev
+    git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx libpq-dev libzip-dev
 
-# Fix typo (remove 'exts') and add pdo_pgsql & pgsql
-RUN docker-php-ext-install pdo pdo_pgsql pgsql pdo_mysql mbstring xml bcmath gd
+# Install required PHP extensions (including zip, pdo_pgsql, and pgsql)
+RUN docker-php-ext-install pdo pdo_pgsql pgsql pdo_mysql mbstring xml bcmath gd zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
