@@ -1,25 +1,25 @@
 FROM php:8.3-fpm
 
-# Install system dependencies & PHP extensions needed for Laravel
+# Install system dependencies including libpq-dev for PostgreSQL
 RUN apt-get update && apt-get install -y \
-    git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx
+    git unzip libpng-dev libonig-dev libxml2-dev zip curl nginx libpq-dev
 
-RUN docker-php-ext-install pdo pdo_mysql mbstring exts xml bcmath gd
+# Fix typo (remove 'exts') and add pdo_pgsql & pgsql
+RUN docker-php-ext-install pdo pdo_pgsql pgsql pdo_mysql mbstring xml bcmath gd
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Copy existing application code
+# Copy application files
 COPY . .
 
-# Install dependencies
+# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Set directory permissions
+# Set permissions for Laravel
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# Configure Nginx entrypoint
 EXPOSE 80
-CMD php artisan config:cache && php artisan route:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=80
+CMD php artisan config:cache && php artisan route:cache && php artisan serve --host=0.0.0.0 --port=80
