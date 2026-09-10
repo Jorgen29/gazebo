@@ -328,10 +328,10 @@ class VenueBookingController extends Controller
             ],
         ]);
 
-        // Send email notification to Admin using configured sender address
+        // Send email notification to Admin using the inquiry email as the sender identity
         try {
             $adminEmail = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
-            Mail::to($adminEmail)->send(new NewInquiryNotification($inquiry));
+            Mail::to($adminEmail)->queue(new NewInquiryNotification($inquiry));
         } catch (\Exception $e) {
             // Log error if mail server fails
             \Log::error('Mail sending failed: ' . $e->getMessage());
@@ -397,7 +397,7 @@ class VenueBookingController extends Controller
             $inquiry->save();
         }
 
-        Mail::to($inquiry->email)->send(new PaymentInstructionsMail($inquiry));
+        Mail::to($inquiry->email)->queue(new PaymentInstructionsMail($inquiry));
 
         $inquiry->update([
             'payment_requested_at' => now(),
@@ -454,7 +454,7 @@ class VenueBookingController extends Controller
                         config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'))
                     );
 
-                Mail::to($inquiry->email)->send($notification);
+                Mail::to($inquiry->email)->queue($notification);
             } catch (\Exception $e) {
                 \Log::error('Inquiry status email failed: ' . $e->getMessage());
             }

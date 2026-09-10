@@ -4,10 +4,11 @@ namespace App\Mail;
 
 use App\Models\Inquiry;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class PaymentInstructionsMail extends Mailable
+class PaymentInstructionsMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -22,8 +23,8 @@ class PaymentInstructionsMail extends Mailable
     {
         $reference = $this->inquiry->booking_reference ?? $this->inquiry->getBookingReference();
         $subject = 'Booking Request - ' . $reference;
-        $fromAddress = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
-        $fromName = config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'));
+        $fromAddress = $this->inquiry->email ?? config('mail.from.address', 'hello@example.com');
+        $fromName = $this->inquiry->full_name ?? config('mail.from.name', 'Customer');
 
         return $this->from($fromAddress, $fromName)
             ->subject($subject)
