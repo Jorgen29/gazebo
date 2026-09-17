@@ -23,11 +23,11 @@ class InquiryStatusNotification extends Mailable implements ShouldQueue
 
     public function build()
     {
-        $fromAddress = $this->inquiry->email ?? config('mail.from.address', 'hello@example.com');
-        $fromName = $this->inquiry->full_name ?? config('mail.from.name', 'Customer');
+        $adminAddress = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
+        $adminName = config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'));
 
-        return $this->from($fromAddress, $fromName)
-            ->replyTo($fromAddress, $fromName)
+        return $this->from($adminAddress, $adminName)
+            ->replyTo($adminAddress, $adminName) // Client replies go to Admin
             ->subject('Reservation ' . $this->statusLabel . ' - ' . $this->inquiry->venue_title)
             ->view('emails.inquiry_status_notification');
     }
