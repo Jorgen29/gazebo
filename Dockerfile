@@ -32,4 +32,4 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
  && chmod 777 /tmp
 
 EXPOSE 80
-CMD php artisan config:clear && php artisan cache:clear && php artisan config:cache && php artisan route:cache && php artisan migrate --force && php artisan storage:link --force && php artisan schedule:work & php artisan serve --host=0.0.0.0 --port=80
+CMD php artisan migrate --force && php artisan config:clear && php artisan cache:clear && php artisan config:cache && php artisan route:cache && php artisan storage:link --force && php artisan schedule:work & php artisan serve --host=0.0.0.0 --port=80
