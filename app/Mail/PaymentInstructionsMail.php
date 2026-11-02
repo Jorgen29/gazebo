@@ -23,8 +23,9 @@ class PaymentInstructionsMail extends Mailable implements ShouldQueue
     {
         $reference = $this->inquiry->booking_reference ?? $this->inquiry->getBookingReference();
         $subject = 'Booking Request - ' . $reference;
-        $fromAddress = $this->inquiry->email ?? config('mail.from.address', 'hello@example.com');
-        $fromName = $this->inquiry->full_name ?? config('mail.from.name', 'Customer');
+        // Use application sender details so replies go to the admin mailbox
+        $fromAddress = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
+        $fromName = config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'));
 
         return $this->from($fromAddress, $fromName)
             ->subject($subject)

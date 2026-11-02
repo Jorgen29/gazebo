@@ -332,9 +332,32 @@ class VenueBookingController extends Controller
         try {
             $adminEmail = config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com'));
             Mail::to($adminEmail)->queue(new NewInquiryNotification($inquiry));
+
+            \Log::info('Booking inquiry queued for admin email', [
+                'inquiry_id' => $inquiry->id,
+                'email' => $inquiry->email,
+                'admin_email' => $adminEmail,
+                'queue_connection' => config('queue.default'),
+            ]);
         } catch (\Exception $e) {
             // Log error if mail server fails
-            \Log::error('Mail sending failed: ' . $e->getMessage());
+            \Log::error('Mail sending failed: ' . $e->getMessage(), [
+                'inquiry_id' => $inquiry->id,
+                'email' => $inquiry->email,
+            ]);
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Your reservation request has been submitted successfully!',
+                'inquiry_id' => $inquiry->id,
+                'queued' => true,
+                'mail' => [
+                    'to' => $adminEmail ?? config('mail.from.address', 'hello@example.com'),
+                    'from' => $inquiry->email,
+                ],
+            ]);
         }
 
         return back()->with('success', 'Your reservation request has been submitted successfully!');
@@ -448,13 +471,8 @@ class VenueBookingController extends Controller
 
         if (!empty($inquiry->email) && in_array($newStatus, ['approved', 'declined', 'cancelled'], true)) {
             try {
-                $notification = (new InquiryStatusNotification($inquiry, $newStatus))
-                    ->from(
-                        config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
-                        config('mail.from.name', env('MAIL_FROM_NAME', 'The Gazebo Events Place'))
-                    );
 
-                Mail::to($inquiry->email)->queue($notification);
+                Mail::to($inquiry->email)->queue(new InquiryStatusNotification($inquiry, $newStatus));
             } catch (\Exception $e) {
                 \Log::error('Inquiry status email failed: ' . $e->getMessage());
             }

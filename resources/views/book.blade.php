@@ -537,7 +537,59 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    bookingForm.submit();
+                    const formData = new FormData(bookingForm);
+
+                    fetch(bookingForm.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]')?.getAttribute(
+                                    'content') || document.querySelector(
+                                        'input[name="_token"]')?.value,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData,
+                        })
+                        .then(async (response) => {
+                            const contentType = response.headers.get('content-type') ||
+                                '';
+                            const payload = contentType.includes('application/json') ?
+                                await response.json() : null;
+
+                            if (!response.ok) {
+                                throw new Error(payload?.message || 'Request failed.');
+                            }
+
+                            Swal.fire({
+                                title: 'Reservation Submitted!',
+                                text: payload?.message ||
+                                    'Your reservation request has been submitted successfully!',
+                                icon: 'success',
+                                confirmButtonText: 'Okay',
+                                confirmButtonColor: '#1C3627',
+                                background: '#ffffff',
+                                color: '#1f2937',
+                                customClass: {
+                                    popup: 'rounded-sm shadow-xl'
+                                }
+                            }).then(() => {
+                                bookingForm.reset();
+                            });
+                        })
+                        .catch((error) => {
+                            console.error('Booking submit error:', error);
+                            Swal.fire({
+                                title: 'Request failed',
+                                text: error.message ||
+                                    'There was a problem submitting your request.',
+                                icon: 'error',
+                                confirmButtonColor: '#1C3627',
+                                customClass: {
+                                    popup: 'rounded-sm shadow-xl'
+                                }
+                            });
+                        });
                 }
             });
         });
