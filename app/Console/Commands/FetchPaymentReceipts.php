@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Webklex\PHPIMAP\ClientManager;
 use App\Models\Inquiry;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class FetchPaymentReceipts extends Command
@@ -26,6 +27,8 @@ class FetchPaymentReceipts extends Command
             $this->line("Host: {$host}:{$port} ({$encryption})");
             $this->line("Username: {$username}");
             $this->info("--------------------------------------------------");
+
+            Log::info("IMAP Fetch: Connecting to server {$host}:{$port} for user {$username}");
 
             $cm = new ClientManager([
                 'options' => [
@@ -59,6 +62,7 @@ class FetchPaymentReceipts extends Command
             $client->connect();
 
             $this->info("STATUS: Connected successfully!");
+            Log::info("IMAP Fetch: Connected successfully.");
 
             $folder = $client->getFolder('INBOX');
             $this->line("Active Folder: " . $folder->name);
@@ -75,15 +79,17 @@ class FetchPaymentReceipts extends Command
                 ->limit(10)
                 ->get();
 
-            $this->info("Found " . $messages->count() . " unread message(s) from the past 2 days.");
+            $messageCount = $messages->count();
+            $this->info("Found {$messageCount} unread message(s) from the past 2 days.");
+            Log::info("IMAP Fetch: Found {$messageCount} unread message(s) since {$twoDaysAgo->toDateTimeString()}.");
 
-            if ($messages->count() === 0) {
+            if ($messageCount === 0) {
                 $this->warn("No unread matching emails found in the last 2 days.");
                 return Command::SUCCESS;
             }
 
             foreach ($messages as $message) {
-                $senderEmail = $message->getFrom()[0]->mail;
+                $senderEmail = $message->getFrom()[0]->mail ?? 'unknown';
                 $subject = $message->getSubject();
 
                 $this->line("--------------------------------------------------");
@@ -99,7 +105,9 @@ class FetchPaymentReceipts extends Command
 
                 // Extract booking reference
                 if (!preg_match('/Booking Request - R(\d+)/i', $subject, $matches)) {
-                    $this->warn("No valid booking reference found in subject. Skipping...");
+                    $msg = "No valid booking reference found in subject '{$subject}' from {$senderEmail}. Skipping...";
+                    $this->warn($msg);
+                    Log::warning("IMAP Fetch: " . $msg);
                     continue;
                 }
 
@@ -111,12 +119,16 @@ class FetchPaymentReceipts extends Command
                     ->first();
 
                 if (!$inquiry) {
-                    $this->warn("No pending inquiry without payment proof found for reference {$reference}.");
+                    $msg = "No pending inquiry without payment proof found for reference {$reference}.";
+                    $this->warn($msg);
+                    Log::warning("IMAP Fetch: " . $msg);
                     continue;
                 }
 
                 if (!$message->hasAttachments()) {
-                    $this->warn("Client reply has no image attachments.");
+                    $msg = "Client reply for Inquiry #{$inquiry->id} (Ref: {$reference}) has no image attachments.";
+                    $this->warn($msg);
+                    Log::warning("IMAP Fetch: " . $msg);
                     continue;
                 }
 
@@ -136,7 +148,10 @@ class FetchPaymentReceipts extends Command
                             'payment_proof' => $filename,
                         ]);
 
-                        $this->info("SUCCESS: Saved receipt attachment and linked to Inquiry ID: {$inquiry->id}");
+                        $successMsg = "SUCCESS: Saved receipt attachment '{$filename}' and linked to Inquiry ID: {$inquiry->id} (Ref: {$reference})";
+                        $this->info($successMsg);
+                        Log::info("IMAP Fetch: " . $successMsg);
+
                         $attachmentSaved = true;
                         break;
                     }
@@ -149,8 +164,17 @@ class FetchPaymentReceipts extends Command
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
+            $errorMsg = "IMAP Execution Error: " . $e->getMessage();
             $this->error("IMAP Execution Error!");
             $this->error("Message: " . $e->getMessage());
+
+            Log::error("IMAP Fetch Exception", [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return Command::FAILURE;
         }
     }
