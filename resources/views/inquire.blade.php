@@ -332,8 +332,8 @@
                 class="relative w-full h-[380px] sm:h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 flex items-center justify-center shadow-inner">
                 <!-- 3D Render Mode Content Placeholder -->
                 <div x-show="activeViewMode === '3d'" class="absolute inset-0 bg-[#162B20]">
-                    <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" alt="Venue 3D Model"
-                        auto-rotate camera-controls class="w-full h-full">
+                    <model-viewer src="{{ asset('models/Astronaut.glb') }}" alt="Venue 3D Model" auto-rotate
+                        camera-controls class="w-full h-full">
                     </model-viewer>
                 </div>
 
