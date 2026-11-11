@@ -24,13 +24,5 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
-
-        // Automatically create the storage symlink if it doesn't exist on the server
-        if (!file_exists(public_path('storage'))) {
-            app('files')->link(
-                storage_path('app/public'),
-                public_path('storage')
-            );
-        }
     }
 }
