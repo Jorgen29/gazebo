@@ -27,6 +27,7 @@
             display: none !important;
         }
     </style>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 
 <body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans" x-data="{
@@ -294,6 +295,75 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW 3D RENDER / AUTOCAD BLUEPRINT PREVIEW SECTION -->
+    <section class="relative z-10 pt-12 pb-4 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto" x-data="{ activeViewMode: '3d' }">
+        <div class="bg-white border border-gray-200/80 rounded-sm shadow-sm p-6 sm:p-10 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+                <div>
+                    <p class="text-[10px] uppercase tracking-[0.3em] text-[#B89462] font-semibold mb-1">INTERACTIVE
+                        BLUEPRINT & RENDER</p>
+                    <h2 class="text-2xl font-serif text-[#3b4d3c]">3D Venue Virtual Tour & AutoCAD Layout</h2>
+                    <p class="text-xs text-gray-500 font-light mt-1">Explore our venue grounds, seating configurations,
+                        and architectural layout in real-time 3D before making your reservation.</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button @click="activeViewMode = '3d'"
+                        :class="activeViewMode === '3d' ? 'bg-[#1C3627] text-white' :
+                            'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-sm text-xs font-semibold uppercase tracking-wider transition-all">
+                        3D Render View
+                    </button>
+                    <button @click="activeViewMode = 'autocad'"
+                        :class="activeViewMode === 'autocad' ? 'bg-[#1C3627] text-white' :
+                            'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-sm text-xs font-semibold uppercase tracking-wider transition-all">
+                        AutoCAD Blueprint
+                    </button>
+                </div>
+            </div>
+
+            <!-- Viewport Container -->
+            <div
+                class="relative w-full h-[380px] sm:h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 flex items-center justify-center shadow-inner">
+                <!-- 3D Render Mode Content Placeholder -->
+                <div x-show="activeViewMode === '3d'" class="absolute inset-0 bg-[#162B20]">
+                    <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" alt="Venue 3D Model"
+                        auto-rotate camera-controls class="w-full h-full">
+                    </model-viewer>
+                </div>
+
+                <!-- AutoCAD Blueprint Mode Content Placeholder -->
+                <div x-show="activeViewMode === 'autocad'" x-cloak
+                    class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#0a1a12]">
+                    <div
+                        class="w-16 h-16 rounded-full bg-[#38bdf8]/20 border border-[#38bdf8]/40 flex items-center justify-center text-[#38bdf8] shadow-lg">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                    </div>
+                    <div class="space-y-1 max-w-md">
+                        <h4 class="text-white font-serif text-lg font-medium">AutoCAD Floor Plan & Measurements</h4>
+                        <p class="text-xs text-gray-300 font-light">Detailed architectural CAD schematics with exact
+                            dimensions, seating capacity grids, and stage placements.</p>
+                    </div>
+                    <div class="flex items-center gap-3 pt-2">
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 text-[10px] tracking-wider uppercase backdrop-blur-sm border border-sky-500/20">
+                            Scale 1:100 CAD Drawing
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Overlay Controls Watermark -->
+                <div
+                    class="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md text-white px-3 py-1.5 rounded text-[10px] tracking-widest uppercase border border-white/10 pointer-events-none">
+                    The Gazebo Events Place — Architecture Preview v1.0
                 </div>
             </div>
         </div>
