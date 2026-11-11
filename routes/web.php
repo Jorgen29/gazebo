@@ -88,6 +88,10 @@ Route::get('/contact', function () {
     return view('contact');
 })->name('contact');
 
+Route::get('/rules', function () {
+    return view('rules');
+})->name('rules');
+
 Route::get('/inquire', [VenueBookingController::class, 'inquire'])->name('inquire');
 
 // Public Routes
