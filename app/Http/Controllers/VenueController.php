@@ -215,6 +215,9 @@ class VenueController extends Controller
 
         $venue->delete();
 
-        return redirect()->back()->with('success', 'Venue deleted successfully!');
+        return response()->json([
+            'success' => true,
+            'message' => 'Venue deleted successfully!'
+        ]);
     }
 }
