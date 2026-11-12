@@ -26,8 +26,23 @@
         [x-cloak] {
             display: none !important;
         }
+
+        model-viewer {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 450px;
+            background: #162B20;
+        }
+
+        model-viewer:not(:defined) {
+            display: block;
+            width: 100%;
+            min-height: 450px;
+            background: linear-gradient(135deg, rgba(18, 38, 30, 1), rgba(22, 43, 32, 1));
+        }
     </style>
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.1.1/dist/model-viewer.min.js"></script>
 </head>
 
 <body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans" x-data="{
@@ -328,13 +343,15 @@
             </div>
 
             <!-- Viewport Container -->
-            <div
-                class="relative w-full h-[380px] sm:h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 shadow-inner">
+            <div class="relative w-full h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 shadow-inner"
+                style="min-height: 450px;">
 
                 <!-- 3D Render Mode Content -->
-                <div x-show="activeViewMode === '3d'" class="absolute inset-0 w-full h-full bg-[#162B20]">
-                    <model-viewer src="{{ asset('models/Astronaut.glb') }}" alt="Venue 3D Model" auto-rotate
-                        camera-controls style="width: 100%; height: 100%; display: block;">
+                <div x-show="activeViewMode === '3d'" class="absolute inset-0 w-full h-full min-h-[450px] bg-[#162B20]"
+                    style="height: 450px; min-height: 450px;">
+                    <model-viewer src="https://development.gazebo-dev.online/models/Astronaut.glb"
+                        alt="Venue 3D Model" auto-rotate camera-controls
+                        style="width: 100%; height: 100%; min-height: 450px; display: block; background: #162B20;">
                     </model-viewer>
                 </div>
 
@@ -345,11 +362,13 @@
                         class="w-16 h-16 rounded-full bg-[#38bdf8]/20 border border-[#38bdf8]/40 flex items-center justify-center text-[#38bdf8] shadow-lg">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                            </path>
                         </svg>
                     </div>
                     <div class="space-y-1 max-w-md">
-                        <h4 class="text-white font-serif text-lg font-medium">AutoCAD Floor Plan & Measurements</h4>
+                        <h4 class="text-white font-serif text-lg font-medium">AutoCAD Floor Plan &amp; Measurements
+                        </h4>
                         <p class="text-xs text-gray-300 font-light">Detailed architectural CAD schematics with exact
                             dimensions, seating capacity grids, and stage placements.</p>
                     </div>
