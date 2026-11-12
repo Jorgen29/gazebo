@@ -29,22 +29,7 @@
     </style>
 </head>
 
-<body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans" x-data="{
-    formSubmitted: false,
-    formData: {
-        name: '',
-        email: '',
-        phone: '',
-        event_type: 'wedding',
-        event_date: '',
-        guests: '',
-        message: ''
-    },
-    submitForm() {
-        // Add your backend submission logic here
-        this.formSubmitted = true;
-    }
-}">
+<body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans">
 
     <!-- Header Component -->
     <x-header />
@@ -65,7 +50,7 @@
     <section class="py-12 sm:py-16 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-            <!-- Left Info & Map Column (5 Cols) -->
+            <!-- Left Info Column (5 Cols) -->
             <div class="lg:col-span-5 space-y-8">
                 <div>
                     <p class="text-[10px] uppercase tracking-[0.3em] text-[#B89462] font-semibold mb-1">REACH OUT TO US
@@ -137,124 +122,16 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Embedded Map Embed Container -->
-                <div class="bg-white p-2 rounded-sm border border-gray-200/80 shadow-sm overflow-hidden">
-                    <iframe class="w-full h-64 rounded-sm border-0"
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.802094892476!2d121.0425!3d14.5547!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDMzJ1E3LjIiTiAxMjHCsDAyJzMzLjAiRQ!5e0!3m2!1sen!2sph!4v1620000000000!5m2!1sen!2sph"
-                        allowfullscreen="" loading="lazy">
-                    </iframe>
-                </div>
             </div>
 
-            <!-- Right Inquiry Form Column (7 Cols) -->
-            <div class="lg:col-span-7">
-                <div class="bg-white border border-gray-200/80 rounded-sm shadow-md p-6 sm:p-10">
-                    <div class="mb-8 space-y-1">
-                        <p class="text-[10px] uppercase tracking-[0.3em] text-[#B89462] font-semibold">INQUIRY FORM</p>
-                        <h3 class="text-2xl font-serif text-[#3b4d3c]">Send Us a Message</h3>
-                        <p class="text-xs text-gray-500 font-light">Fill out the details below and our team will get
-                            back to you with custom packages and availability.</p>
-                    </div>
-
-                    <!-- Success Message Box -->
-                    <div x-show="formSubmitted" x-cloak
-                        class="p-6 bg-[#F8F6F0] border border-[#B89462]/40 rounded-sm mb-6 space-y-2">
-                        <div class="flex items-center gap-2 text-[#1C3627] font-serif text-lg font-medium">
-                            <svg class="w-5 h-5 text-[#B89462]" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            Thank You for Reaching Out!
-                        </div>
-                        <p class="text-xs text-gray-600 font-light leading-relaxed">
-                            Your inquiry has been received. One of our event coordinators will contact you shortly to
-                            confirm your requested date and answer any questions.
-                        </p>
-                    </div>
-
-                    <!-- Form -->
-                    <form @submit.prevent="submitForm()" class="space-y-5">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label
-                                    class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Full
-                                    Name *</label>
-                                <input type="text" x-model="formData.name" required placeholder="e.g. Maria Santos"
-                                    class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50">
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Email
-                                    Address *</label>
-                                <input type="email" x-model="formData.email" required
-                                    placeholder="e.g. maria@example.com"
-                                    class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label
-                                    class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Phone
-                                    / Mobile Number *</label>
-                                <input type="tel" x-model="formData.phone" required
-                                    placeholder="e.g. +63 917 000 0000"
-                                    class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50">
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Event
-                                    Type *</label>
-                                <select x-model="formData.event_type"
-                                    class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50">
-                                    <option value="wedding">Wedding Reception</option>
-                                    <option value="grotto_vows">Grotto Ceremony</option>
-                                    <option value="debut">18th Debut</option>
-                                    <option value="birthday">Birthday Party</option>
-                                    <option value="corporate">Corporate Event</option>
-                                    <option value="other">Other Social Gathering</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label
-                                    class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Target
-                                    Event Date</label>
-                                <input type="date" x-model="formData.event_date"
-                                    class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50 text-gray-600">
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Estimated
-                                    Guest Count</label>
-                                <input type="number" x-model="formData.guests" placeholder="e.g. 150"
-                                    class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-1.5">Message
-                                / Special Requests</label>
-                            <textarea x-model="formData.message" rows="4"
-                                placeholder="Tell us about your event preferences, styling requests, or any specific questions..."
-                                class="w-full text-xs px-4 py-3 rounded-sm border border-gray-200 focus:outline-none focus:border-[#1C3627] focus:ring-1 focus:ring-[#1C3627] bg-[#FBF9F5]/50"></textarea>
-                        </div>
-
-                        <div class="pt-2">
-                            <button type="submit"
-                                class="w-full bg-[#1C3627] text-white py-3.5 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#2a4d38] transition-all shadow-md">
-                                SUBMIT INQUIRY
-                            </button>
-                        </div>
-                    </form>
+            <!-- Right Map Column (7 Cols) -->
+            <div class="lg:col-span-7 flex flex-col justify-center">
+                <!-- Embedded Map Embed Container -->
+                <div class="bg-white p-2 rounded-sm border border-gray-200/80 shadow-sm overflow-hidden">
+                    <iframe class="w-full h-[450px] rounded-sm border-0"
+                        src="https://maps.google.com/maps?q=9.9822524,122.7383734+(Dancalan,%20Ilog,%20Negros%20Occidental)&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                        allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
                 </div>
             </div>
 
@@ -292,3 +169,4 @@
 </body>
 
 </html>
+```[cite: 4]
