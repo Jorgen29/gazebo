@@ -29,6 +29,13 @@
                 </div>
             </a>
 
+            <!-- Brand Logo / Name -->
+            <a href="/" class="flex items-center">
+                <img src="{{ asset('images/logo.png') }}" alt="The Gazebo Logo"
+                    class="h-12 sm:h-16 w-auto object-contain shrink-0">
+            </a>
+
+
             <!-- Desktop Navigation Links -->
             <nav class="hidden lg:flex items-center space-x-6 xl:space-x-8">
                 <a href="{{ request()->is('/') ? '#home' : '/#home' }}"
