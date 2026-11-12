@@ -329,17 +329,18 @@
 
             <!-- Viewport Container -->
             <div
-                class="relative w-full h-[380px] sm:h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 flex items-center justify-center shadow-inner">
-                <!-- 3D Render Mode Content Placeholder -->
-                <div x-show="activeViewMode === '3d'" class="absolute inset-0 bg-[#162B20]">
+                class="relative w-full h-[380px] sm:h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 shadow-inner">
+
+                <!-- 3D Render Mode Content -->
+                <div x-show="activeViewMode === '3d'" class="absolute inset-0 w-full h-full bg-[#162B20]">
                     <model-viewer src="{{ asset('models/Astronaut.glb') }}" alt="Venue 3D Model" auto-rotate
-                        camera-controls class="w-full h-full">
+                        camera-controls style="width: 100%; height: 100%; display: block;">
                     </model-viewer>
                 </div>
 
-                <!-- AutoCAD Blueprint Mode Content Placeholder -->
+                <!-- AutoCAD Blueprint Mode Content -->
                 <div x-show="activeViewMode === 'autocad'" x-cloak
-                    class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#0a1a12]">
+                    class="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#0a1a12]">
                     <div
                         class="w-16 h-16 rounded-full bg-[#38bdf8]/20 border border-[#38bdf8]/40 flex items-center justify-center text-[#38bdf8] shadow-lg">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -362,7 +363,7 @@
 
                 <!-- Overlay Controls Watermark -->
                 <div
-                    class="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md text-white px-3 py-1.5 rounded text-[10px] tracking-widest uppercase border border-white/10 pointer-events-none">
+                    class="absolute bottom-4 left-4 z-20 bg-black/40 backdrop-blur-md text-white px-3 py-1.5 rounded text-[10px] tracking-widest uppercase border border-white/10 pointer-events-none">
                     The Gazebo Events Place — Architecture Preview v1.0
                 </div>
             </div>
