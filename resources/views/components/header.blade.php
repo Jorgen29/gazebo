@@ -29,11 +29,11 @@
                 </div>
             </a>
 
-            <!-- Brand Logo / Name -->
+            {{-- <!-- Brand Logo / Name -->
             <a href="/" class="flex items-center">
                 <img src="{{ asset('images/logo.png') }}" alt="The Gazebo Logo"
                     class="h-12 sm:h-16 w-auto object-contain shrink-0">
-            </a>
+            </a> --}}
 
 
             <!-- Desktop Navigation Links -->
