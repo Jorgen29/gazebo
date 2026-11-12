@@ -346,36 +346,59 @@
             <div class="relative w-full h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 shadow-inner"
                 style="min-height: 450px;">
 
-                <!-- 3D Render Mode Content -->
-                <div x-show="activeViewMode === '3d'" class="absolute inset-0 w-full h-full min-h-[450px] bg-[#162B20]"
+                <!-- 3D Render Mode Content (Using Sketchfab Tower House Design) -->
+                <div x-show="activeViewMode === '3d'" class="absolute inset-0 w-full h-full bg-[#162B20]"
                     style="height: 450px; min-height: 450px;">
-                    <model-viewer src="https://development.gazebo-dev.online/models/Astronaut.glb"
-                        alt="Venue 3D Model" auto-rotate camera-controls
-                        style="width: 100%; height: 100%; min-height: 450px; display: block; background: #162B20;">
-                    </model-viewer>
+                    <iframe
+                        src="https://sketchfab.com/models/a972a15421a942429f1279824e00c042/embed?autostart=1&navigation=fps&annotation_cycle=5&ui_infos=0&ui_watermark=0"
+                        class="w-full h-full border-0" allowfullscreen mozallowfullscreen="true"
+                        webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking">
+                    </iframe>
                 </div>
 
                 <!-- AutoCAD Blueprint Mode Content -->
                 <div x-show="activeViewMode === 'autocad'" x-cloak
-                    class="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#0a1a12]">
-                    <div
-                        class="w-16 h-16 rounded-full bg-[#38bdf8]/20 border border-[#38bdf8]/40 flex items-center justify-center text-[#38bdf8] shadow-lg">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
-                            </path>
-                        </svg>
+                    class="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#0a1a12]"
+                    x-data="{
+                        zoom: 1,
+                        originX: 50,
+                        originY: 50,
+                        handleBlueprintClick(event) {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            // Calculate exact click percentage relative to the image container
+                            const x = ((event.clientX - rect.left) / rect.width) * 100;
+                            const y = ((event.clientY - rect.top) / rect.height) * 100;
+                    
+                            this.originX = x;
+                            this.originY = y;
+                    
+                            // Toggle zoom between 1x and 2.5x on click
+                            this.zoom = this.zoom === 1 ? 2.5 : 1;
+                        }
+                    }">
+
+                    <!-- Blueprint Image or Schematic Preview with Click-to-Zoom and Fixed Origin -->
+                    <div class="relative w-full h-full max-h-[280px] overflow-hidden rounded border border-sky-500/30 bg-[#06120c] flex items-center justify-center cursor-zoom-in"
+                        @click="handleBlueprintClick($event)">
+
+                        <img src="{{ asset('images/autocad-blueprint.jpg') }}" alt="AutoCAD Blueprint Layout"
+                            class="max-w-none w-full h-full object-contain opacity-90 transition-transform duration-300 ease-out select-none"
+                            :style="`transform: scale(${zoom}); transform-origin: ${originX}% ${originY}%;`">
+
+                        <!-- Zoom Control Floating Toolbar Overlay -->
+                        <div
+                            class="absolute bottom-3 right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/20 rounded p-1 shadow-lg z-10 pointer-events-none">
+                            <span class="px-2 text-white text-[10px] uppercase font-semibold"
+                                x-text="zoom > 1 ? 'Zoomed (Click to Reset)' : 'Click anywhere to zoom'"></span>
+                        </div>
                     </div>
-                    <div class="space-y-1 max-w-md">
-                        <h4 class="text-white font-serif text-lg font-medium">AutoCAD Floor Plan &amp; Measurements
+
+                    <div class="space-y-1">
+                        <h4 class="text-white font-serif text-sm font-medium">AutoCAD Floor Plan &amp; Measurements
                         </h4>
-                        <p class="text-xs text-gray-300 font-light">Detailed architectural CAD schematics with exact
-                            dimensions, seating capacity grids, and stage placements.</p>
-                    </div>
-                    <div class="flex items-center gap-3 pt-2">
                         <span
-                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 text-[10px] tracking-wider uppercase backdrop-blur-sm border border-sky-500/20">
-                            Scale 1:100 CAD Drawing
+                            class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[10px] tracking-wider uppercase border border-sky-500/20">
+                            Scale 1:100 CAD Drawing (Click any section to zoom into focus)
                         </span>
                     </div>
                 </div>
