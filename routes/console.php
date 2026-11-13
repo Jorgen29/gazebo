@@ -8,7 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule the payment fetching command to run every 15 minutes
-Schedule::command('inquiries:fetch-payments')
+// Reconcile pending Xendit invoices as a webhook-delivery backup.
+// Default interval: every 5 minutes (within 5–15 min guidance). Adjust here if needed.
+Schedule::command('payments:reconcile-xendit')
     ->everyFiveMinutes()
     ->withoutOverlapping();
