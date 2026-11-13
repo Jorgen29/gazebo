@@ -224,7 +224,7 @@
                             class="w-1/2 bg-[#1C3627] text-white py-2.5 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#2a4d38] transition-all shadow-sm text-center">
                             View Photos
                         </button>
-                        <a href="/#inquire"
+                        <a href="{{ route('inquire') }}"
                             class="w-1/2 border border-[#3b4d3c] text-[#3b4d3c] py-2.5 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#3b4d3c] hover:text-white transition-all text-center">
                             Inquire Now
                         </a>
