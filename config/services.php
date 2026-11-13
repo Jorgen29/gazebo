@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // Xendit Invoice (sandbox locally). Callback token is verified on webhooks;
+    // reconciliation polls pending invoices as backup (scheduled, default 5 min).
+    'xendit' => [
+        'secret_key' => env('XENDIT_SECRET_KEY'),
+        'callback_token' => env('XENDIT_CALLBACK_TOKEN'),
+        // Invoice expiry in hours (24h default).
+        'invoice_expiry_hours' => (int) env('XENDIT_INVOICE_EXPIRY_HOURS', 24),
+        'currency' => env('XENDIT_CURRENCY', 'PHP'),
+    ],
+
 ];

@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Inquiry;
+use App\Models\Payment;
 use App\Models\Venue;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\InquiryStatusNotification;
 use App\Mail\NewInquiryNotification;
-use App\Mail\PaymentInstructionsMail;
 use App\Models\Notification;
+use App\Services\InquiryPaymentService;
 use Carbon\Carbon;
 
 class VenueBookingController extends Controller
@@ -369,7 +370,7 @@ class VenueBookingController extends Controller
         $status = $request->query('status');
         $highlightId = $request->query('highlight_id');
 
-        $query = Inquiry::latest();
+        $query = Inquiry::with('payments')->latest();
 
         if ($status) {
             $query->where('status', $status);
@@ -406,8 +407,8 @@ class VenueBookingController extends Controller
         return redirect()->route('admin.inquiries');
     }
 
-    // Send GCash Payment instructions email to customer
-    public function sendPaymentEmail($id)
+    // Send or resend a Xendit payment link to customer (admin-triggered after review)
+    public function sendPaymentLink($id, InquiryPaymentService $payments)
     {
         $inquiry = Inquiry::findOrFail($id);
 
@@ -415,49 +416,18 @@ class VenueBookingController extends Controller
             return back()->with('error', 'Customer email address is missing.');
         }
 
-        if (empty($inquiry->booking_reference)) {
-            $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
-            $inquiry->save();
-        }
-
-        Mail::to($inquiry->email)->queue(new PaymentInstructionsMail($inquiry));
-
-        $inquiry->update([
-            'payment_requested_at' => now(),
-        ]);
-
-        return back()->with('success', 'Payment instruction email sent to customer!');
-    }
-
-    // Upload proof of payment manually from admin (when customer replies with screenshot)
-    public function uploadPaymentProof(Request $request, $id)
-    {
-        $request->validate([
-            'payment_proof' => 'required|image|mimes:jpg,jpeg,png|max:5120',
-        ]);
-
-        $inquiry = Inquiry::findOrFail($id);
-
-        if ($request->hasFile('payment_proof')) {
-            $path = $request->file('payment_proof')->store('payment_proofs', 'public');
-            $inquiry->update([
-                'payment_proof' => $path,
-            ]);
-
-            Notification::create([
+        try {
+            $payments->sendPaymentLink($inquiry);
+        } catch (\Throwable $e) {
+            \Log::error('Xendit payment link send failed: ' . $e->getMessage(), [
                 'inquiry_id' => $inquiry->id,
-                'type' => 'payment_received',
-                'email' => $inquiry->email,
-                'subject' => 'Payment proof received',
-                'message' => 'A client uploaded a payment proof for their booking.',
-                'metadata' => [
-                    'payment_path' => $path,
-                    'booking_reference' => $inquiry->booking_reference,
-                ],
+                'exception' => $e,
             ]);
+
+            return back()->with('error', 'Unable to create/send payment link right now. Please check Xendit configuration and try again.');
         }
 
-        return back()->with('success', 'Payment proof attached successfully. You can now approve the booking.');
+        return back()->with('success', 'Payment link sent to customer!');
     }
 
     // Update Inquiry status
@@ -465,8 +435,16 @@ class VenueBookingController extends Controller
     {
         $request->validate(['status' => 'required|in:pending,approved,declined,cancelled']);
 
-        $inquiry = Inquiry::findOrFail($id);
+        $inquiry = Inquiry::with('payments')->findOrFail($id);
         $newStatus = $request->status;
+
+        if ($newStatus === 'approved') {
+            $latest = $inquiry->payments()->latest('id')->first();
+            if (! $latest || $latest->status !== Payment::STATUS_PAID) {
+                return back()->with('error', 'Inquiry can only be approved when the latest current payment is paid.');
+            }
+        }
+
         $inquiry->update(['status' => $newStatus]);
 
         if (!empty($inquiry->email) && in_array($newStatus, ['approved', 'declined', 'cancelled'], true)) {

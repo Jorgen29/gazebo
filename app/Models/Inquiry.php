@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Inquiry extends Model
 {
@@ -19,15 +21,46 @@ class Inquiry extends Model
         'email',
         'email_contact',
         'status',
-        'payment_proof',
-        'payment_requested_at',
         'booking_reference',
     ];
 
-    protected $casts = [
-        'payment_requested_at' => 'datetime',
-        'booking_date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'booking_date' => 'date',
+        ];
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function latestPayment(): HasOne
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
+    }
+
+    /**
+     * Current payment is the latest active (pending) invoice for this inquiry.
+     * Expired/failed/superseded attempts are not current.
+     */
+    public function currentPayment(): ?Payment
+    {
+        return $this->payments()
+            ->where('status', Payment::STATUS_PENDING)
+            ->latest('id')
+            ->first();
+    }
+
+    public function latestCurrentPaidPayment(): ?Payment
+    {
+        // "Latest current payment is paid" for approval gate means the most recent
+        // invoice attempt for the inquiry is paid (and thus the active/current one).
+        $latest = $this->payments()->latest('id')->first();
+
+        return $latest && $latest->isPaid() ? $latest : null;
+    }
 
     public static function generateBookingReference(?self $inquiry = null): string
     {
