@@ -15,6 +15,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         [x-cloak] {
             display: none !important;
@@ -138,20 +139,66 @@
         return '₱' + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
 
-    printReport() {
-        Swal.fire({
-            title: 'Generate Print View?',
-            text: 'Prepare approved sales report for printing or PDF export.',
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonColor: '#1B4332',
-            cancelButtonColor: '#64748B',
-            confirmButtonText: 'Yes, Print Now'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.print();
-            }
+    exportToExcel() {
+        // Filter records using the active search query so the export matches the table
+        const filtered = this.approvedInquiries.filter(sale =>
+            this.matchesSearch(sale.full_name, sale.venue_title, sale.formatted_ref, sale.formatted_date)
+        );
+
+        if (filtered.length === 0) {
+            Swal.fire({
+                title: 'No Data to Export',
+                text: 'There are no approved sales records matching your current filter.',
+                icon: 'warning',
+                confirmButtonColor: '#1B4332'
+            });
+            return;
+        }
+
+        // Map data to clean Excel columns
+        const rows = filtered.map(sale => ({
+            'Reference': sale.formatted_ref,
+            'Client Name': sale.full_name,
+            'Email': sale.email,
+            'Venue': sale.venue_title,
+            'Event Date': sale.formatted_date,
+            'Status': 'Approved',
+            'Sale Amount (PHP)': Number(sale.paid_amount)
+        }));
+
+        // Calculate filtered total and append summary row
+        const filteredTotal = filtered.reduce((sum, sale) => sum + Number(sale.paid_amount), 0);
+        rows.push({
+            'Reference': '',
+            'Client Name': '',
+            'Email': '',
+            'Venue': '',
+            'Event Date': '',
+            'Status': 'TOTAL REVENUE',
+            'Sale Amount (PHP)': filteredTotal
         });
+
+        // Create worksheet & set column widths
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        worksheet['!cols'] = [
+            { wch: 16 }, // Reference
+            { wch: 24 }, // Client Name
+            { wch: 28 }, // Email
+            { wch: 24 }, // Venue
+            { wch: 16 }, // Event Date
+            { wch: 16 }, // Status
+            { wch: 20 } // Sale Amount
+        ];
+
+        // Build workbook and trigger download
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Approved Sales');
+
+        const dateSuffix = (this.startDate && this.endDate) ?
+            `${this.startDate}_to_${this.endDate}` :
+            new Date().toISOString().slice(0, 10);
+
+        XLSX.writeFile(workbook, `Gazebo_Sales_Report_${dateSuffix}.xlsx`);
     }
 }">
 
@@ -248,11 +295,11 @@
 
 
 
-                        <!-- Single Print / Export Button -->
-                        <button type="button" @click="printReport()"
+                        <!-- Excel Export Button -->
+                        <button type="button" @click="exportToExcel()"
                             class="bg-[#D4A373] hover:opacity-90 text-[#11231B] text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 h-[38px]">
-                            <i class="fa-solid fa-file-arrow-down text-[#11231B]"></i>
-                            <span class="text-[#11231B]">Print / Export</span>
+                            <i class="fa-solid fa-file-excel text-[#11231B]"></i>
+                            <span class="text-[#11231B]">Export Excel</span>
                         </button>
                     </div>
                 </div>
