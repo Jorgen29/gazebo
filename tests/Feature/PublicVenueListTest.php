@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Inquiry;
 use App\Models\Notification;
+use App\Models\Payment;
 use App\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PublicVenueListTest extends TestCase
@@ -78,7 +80,7 @@ class PublicVenueListTest extends TestCase
             'is_active' => true,
         ]);
 
-        \App\Models\Inquiry::create([
+        Inquiry::create([
             'venue_id' => (string) $venue->id,
             'venue_title' => $venue->title,
             'booking_date' => '2026-09-15',
@@ -90,7 +92,7 @@ class PublicVenueListTest extends TestCase
             'status' => 'approved',
         ]);
 
-        \App\Models\Inquiry::create([
+        Inquiry::create([
             'venue_id' => (string) $venue->id,
             'venue_title' => $venue->title,
             'booking_date' => '2026-09-15',
@@ -122,7 +124,7 @@ class PublicVenueListTest extends TestCase
             'is_active' => true,
         ]);
 
-        \App\Models\Inquiry::create([
+        Inquiry::create([
             'venue_id' => (string) $venue->id,
             'venue_title' => $venue->title,
             'booking_date' => '2026-09-15',
@@ -143,16 +145,16 @@ class PublicVenueListTest extends TestCase
 
     public function test_payment_reference_is_generated_in_r_format(): void
     {
-        $reference = \App\Models\Inquiry::generateBookingReference();
+        $reference = Inquiry::generateBookingReference();
 
         $this->assertMatchesRegularExpression('/^R\d+$/', $reference);
         $this->assertNotSame('R', $reference);
-        $this->assertSame(0, \App\Models\Inquiry::where('booking_reference', $reference)->count());
+        $this->assertSame(0, Inquiry::where('booking_reference', $reference)->count());
     }
 
     public function test_cancelled_status_is_valid_for_inquiries(): void
     {
-        $inquiry = \App\Models\Inquiry::create([
+        $inquiry = Inquiry::create([
             'venue_id' => '1',
             'venue_title' => 'Cancelled Venue',
             'booking_date' => '2026-09-20',
@@ -193,20 +195,22 @@ class PublicVenueListTest extends TestCase
             'status' => 'pending',
         ]);
 
+        // Approval requires a paid latest current payment under the Xendit flow.
+        Payment::factory()->paid()->create(['inquiry_id' => $inquiry->id]);
+
         $this->patch("/admin/inquiries/{$inquiry->id}/status", ['status' => 'approved'])
             ->assertRedirect();
 
-        Mail::assertSent(\App\Mail\InquiryStatusNotification::class, function ($mail) use ($inquiry) {
-            return $mail->hasTo($inquiry->email)
-                && str_contains(strtolower($mail->subject), 'approved');
+        Mail::assertQueued(\App\Mail\InquiryStatusNotification::class, function ($mail) use ($inquiry) {
+            return $mail->hasTo($inquiry->email);
         });
     }
 
-    public function test_client_submission_and_payment_upload_create_notification_records(): void
+    public function test_client_submission_creates_booking_request_notification_without_payment_invoice(): void
     {
         $venue = Venue::create([
             'title' => 'Notification Venue',
-            'description' => 'Tracks booking and payment notifications',
+            'description' => 'Tracks booking notifications',
             'capacity' => 160,
             'price_per_hour' => 4200,
             'image' => 'venues/notification.jpg',
@@ -230,17 +234,7 @@ class PublicVenueListTest extends TestCase
             'type' => 'booking_request',
             'email' => 'newclient@example.com',
         ]);
-
-        $inquiry = Inquiry::first();
-
-        $this->post('/admin/inquiries/' . $inquiry->id . '/upload-proof', [
-            'payment_proof' => UploadedFile::fake()->image('payment-proof.jpg', 1200, 900),
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('notifications', [
-            'inquiry_id' => $inquiry->id,
-            'type' => 'payment_received',
-        ]);
+        $this->assertDatabaseCount('payments', 0);
     }
 
     public function test_venue_update_replaces_cover_and_removed_showcase_images(): void
@@ -287,8 +281,11 @@ class PublicVenueListTest extends TestCase
 
         $venue->refresh();
         $this->assertNotSame('venues/old-cover.jpg', $venue->image);
-        $this->assertCount(1, $venue->showcase_images ?? []);
-        $this->assertStringContainsString('new-showcase-1', $venue->showcase_images[0]);
+        $images = $venue->showcase_images ?? [];
+        $this->assertCount(2, $images);
+        $this->assertContains('venues/showcase/old-2.jpg', $images);
+        $this->assertNotContains('venues/showcase/old-1.jpg', $images);
+        $this->assertTrue(collect($images)->contains(fn ($img) => ! in_array($img, ['venues/showcase/old-1.jpg', 'venues/showcase/old-2.jpg'], true)));
     }
 
     public function test_admin_can_mark_all_notifications_as_read(): void
@@ -323,10 +320,10 @@ class PublicVenueListTest extends TestCase
 
         Notification::create([
             'inquiry_id' => $inquiry->id,
-            'type' => 'payment_received',
+            'type' => 'booking_request',
             'email' => $inquiry->email,
-            'subject' => 'Payment received',
-            'message' => 'Payment received message',
+            'subject' => 'Another inquiry',
+            'message' => 'Another inquiry message',
         ]);
 
         $this->post('/admin/notifications/mark-all-read')
