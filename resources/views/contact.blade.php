@@ -129,7 +129,7 @@
                 <!-- Embedded Map Embed Container -->
                 <div class="bg-white p-2 rounded-sm border border-gray-200/80 shadow-sm overflow-hidden">
                     <iframe class="w-full h-[450px] rounded-sm border-0"
-                        src="https://maps.google.com/maps?q=9.9822524,122.7383734+(Dancalan,%20Ilog,%20Negros%20Occidental)&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                        src="https://maps.google.com/maps?q=9.981136,122.740193+(Dancalan,%20Ilog,%20Negros%20Occidental)&t=&z=17&ie=UTF8&iwloc=&output=embed"
                         allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
                     </iframe>
                 </div>
