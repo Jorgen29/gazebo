@@ -225,7 +225,7 @@
 <section class="bg-[#1C3627] text-white py-10 px-6 sm:px-12">
     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-            <a href="{{ route('inquiry.index') }}"
+            <a href="{{ route('inquire') }}"
                 class="text-[10px] uppercase tracking-widest text-[#B89462] hover:underline flex items-center gap-1 mb-1">
                 &larr; Back to Venue Catalog
             </a>

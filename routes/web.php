@@ -95,7 +95,6 @@ Route::get('/rules', function () {
 Route::get('/inquire', [VenueBookingController::class, 'inquire'])->name('inquire');
 
 // Public Routes
-Route::get('/inquiry', [VenueBookingController::class, 'index'])->name('inquiry.index');
 Route::get('/book', [VenueBookingController::class, 'showBookingPage'])->name('venue.book');
 Route::post('/book/submit', [VenueBookingController::class, 'storeInquiry'])->name('venue.submit');
 
