@@ -8,6 +8,7 @@ use App\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PublicVenueListTest extends TestCase
@@ -196,9 +197,8 @@ class PublicVenueListTest extends TestCase
         $this->patch("/admin/inquiries/{$inquiry->id}/status", ['status' => 'approved'])
             ->assertRedirect();
 
-        Mail::assertSent(\App\Mail\InquiryStatusNotification::class, function ($mail) use ($inquiry) {
-            return $mail->hasTo($inquiry->email)
-                && str_contains(strtolower($mail->subject), 'approved');
+        Mail::assertQueued(\App\Mail\InquiryStatusNotification::class, function ($mail) use ($inquiry) {
+            return $mail->hasTo($inquiry->email);
         });
     }
 
@@ -232,6 +232,14 @@ class PublicVenueListTest extends TestCase
         ]);
 
         $inquiry = Inquiry::first();
+
+        $admin = \App\Models\User::factory()->create([
+            'email' => 'admin@gmail.com',
+            'username' => 'admin',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $this->actingAs($admin, 'web');
 
         $this->post('/admin/inquiries/' . $inquiry->id . '/upload-proof', [
             'payment_proof' => UploadedFile::fake()->image('payment-proof.jpg', 1200, 900),

@@ -109,9 +109,12 @@
     // REDIRECT TO NEW DEDICATED BOOKING PAGE WITH SELECTED SPACE ID & DATE
     proceedToNewPage() {
         let dateParam = this.selectedCalendarDate || '{{ now()->format('Y-m-d') }}';
-        let spaceParam = this.activeSpace ? this.activeSpace.id : 'grand-hall';
+        let spaceParam = this.activeSpace ? this.activeSpace.id : null;
 
-        // Redirects to /book?space=grand-hall&date=2026-09-15
+        if (!spaceParam) {
+            return;
+        }
+
         window.location.href = `{{ route('venue.book') }}?space=${spaceParam}&date=${dateParam}`;
     },
 

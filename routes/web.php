@@ -6,6 +6,7 @@ use App\Http\Controllers\VenueController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Models\Inquiry;
 use App\Models\Venue;
+use App\Support\VenuePresenter;
 use Carbon\Carbon;
 
 Route::get('/', function () {
@@ -13,37 +14,7 @@ Route::get('/', function () {
         ->where('is_active', true)
         ->orderBy('title')
         ->get()
-        ->map(function ($venue) {
-            $gallery = collect([$venue->image, ...(array) ($venue->showcase_images ?? [])])
-                ->filter()
-                ->map(function ($image) {
-                    if (!$image) {
-                        return null;
-                    }
-
-                    return str_starts_with((string) $image, 'http')
-                        ? (string) $image
-                        : asset('storage/' . ltrim((string) $image, '/'));
-                })
-                ->filter()
-                ->values()
-                ->all();
-
-            if (empty($gallery)) {
-                $gallery[] = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80';
-            }
-
-            return [
-                'id' => (string) $venue->id,
-                'title' => $venue->title,
-                'description' => $venue->description,
-                'capacity' => 'up to ' . $venue->capacity . ' Guests',
-                'price' => '₱' . number_format((float) $venue->price_per_hour, 2) . ' / Hour',
-                'image' => $gallery[0],
-                'gallery' => $gallery,
-                'inclusions' => is_array($venue->features) ? array_values(array_filter($venue->features)) : [],
-            ];
-        })
+        ->map(fn (Venue $venue) => VenuePresenter::toArray($venue))
         ->values()
         ->all();
 
