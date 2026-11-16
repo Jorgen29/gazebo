@@ -26,7 +26,23 @@
         [x-cloak] {
             display: none !important;
         }
+
+        model-viewer {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 450px;
+            background: #162B20;
+        }
+
+        model-viewer:not(:defined) {
+            display: block;
+            width: 100%;
+            min-height: 450px;
+            background: linear-gradient(135deg, rgba(18, 38, 30, 1), rgba(22, 43, 32, 1));
+        }
     </style>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.1.1/dist/model-viewer.min.js"></script>
 </head>
 
 <body class="bg-[#FBF9F5] text-gray-800 antialiased font-sans" x-data="{
@@ -294,6 +310,103 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW 3D RENDER / AUTOCAD BLUEPRINT PREVIEW SECTION -->
+    <section class="relative z-10 pt-12 pb-4 px-4 sm:px-8 lg:px-16 max-w-7xl mx-auto" x-data="{ activeViewMode: '3d' }">
+        <div class="bg-white border border-gray-200/80 rounded-sm shadow-sm p-6 sm:p-10 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+                <div>
+                    <p class="text-[10px] uppercase tracking-[0.3em] text-[#B89462] font-semibold mb-1">INTERACTIVE
+                        BLUEPRINT & RENDER</p>
+                    <h2 class="text-2xl font-serif text-[#3b4d3c]">3D Venue Virtual Tour & AutoCAD Layout</h2>
+                    <p class="text-xs text-gray-500 font-light mt-1">Explore our venue grounds, seating configurations,
+                        and architectural layout in real-time 3D before making your reservation.</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button @click="activeViewMode = '3d'"
+                        :class="activeViewMode === '3d' ? 'bg-[#1C3627] text-white' :
+                            'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-sm text-xs font-semibold uppercase tracking-wider transition-all">
+                        3D Render View
+                    </button>
+                    <button @click="activeViewMode = 'autocad'"
+                        :class="activeViewMode === 'autocad' ? 'bg-[#1C3627] text-white' :
+                            'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-sm text-xs font-semibold uppercase tracking-wider transition-all">
+                        AutoCAD Blueprint
+                    </button>
+                </div>
+            </div>
+
+            <!-- Viewport Container -->
+            <div class="relative w-full h-[450px] bg-[#162B20] rounded-sm overflow-hidden border border-[#3B5A45]/30 shadow-inner"
+                style="min-height: 450px;">
+
+                <!-- 3D Render Mode Content (Using Sketchfab Tower House Design) -->
+                <div x-show="activeViewMode === '3d'" class="absolute inset-0 w-full h-full bg-[#162B20]"
+                    style="height: 450px; min-height: 450px;">
+                    <iframe
+                        src="https://sketchfab.com/models/a972a15421a942429f1279824e00c042/embed?autostart=1&navigation=fps&annotation_cycle=5&ui_infos=0&ui_watermark=0"
+                        class="w-full h-full border-0" allowfullscreen mozallowfullscreen="true"
+                        webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking">
+                    </iframe>
+                </div>
+
+                <!-- AutoCAD Blueprint Mode Content -->
+                <div x-show="activeViewMode === 'autocad'" x-cloak
+                    class="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#0a1a12]"
+                    x-data="{
+                        zoom: 1,
+                        originX: 50,
+                        originY: 50,
+                        handleBlueprintClick(event) {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            // Calculate exact click percentage relative to the image container
+                            const x = ((event.clientX - rect.left) / rect.width) * 100;
+                            const y = ((event.clientY - rect.top) / rect.height) * 100;
+                    
+                            this.originX = x;
+                            this.originY = y;
+                    
+                            // Toggle zoom between 1x and 2.5x on click
+                            this.zoom = this.zoom === 1 ? 2.5 : 1;
+                        }
+                    }">
+
+                    <!-- Blueprint Image or Schematic Preview with Click-to-Zoom and Fixed Origin -->
+                    <div class="relative w-full h-full max-h-[280px] overflow-hidden rounded border border-sky-500/30 bg-[#06120c] flex items-center justify-center cursor-zoom-in"
+                        @click="handleBlueprintClick($event)">
+
+                        <img src="{{ asset('images/autocad-blueprint.jpg') }}" alt="AutoCAD Blueprint Layout"
+                            class="max-w-none w-full h-full object-contain opacity-90 transition-transform duration-300 ease-out select-none"
+                            :style="`transform: scale(${zoom}); transform-origin: ${originX}% ${originY}%;`">
+
+                        <!-- Zoom Control Floating Toolbar Overlay -->
+                        <div
+                            class="absolute bottom-3 right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/20 rounded p-1 shadow-lg z-10 pointer-events-none">
+                            <span class="px-2 text-white text-[10px] uppercase font-semibold"
+                                x-text="zoom > 1 ? 'Zoomed (Click to Reset)' : 'Click anywhere to zoom'"></span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <h4 class="text-white font-serif text-sm font-medium">AutoCAD Floor Plan &amp; Measurements
+                        </h4>
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[10px] tracking-wider uppercase border border-sky-500/20">
+                            Scale 1:100 CAD Drawing (Click any section to zoom into focus)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Overlay Controls Watermark -->
+                <div
+                    class="absolute bottom-4 left-4 z-20 bg-black/40 backdrop-blur-md text-white px-3 py-1.5 rounded text-[10px] tracking-widest uppercase border border-white/10 pointer-events-none">
+                    The Gazebo Events Place — Architecture Preview v1.0
                 </div>
             </div>
         </div>

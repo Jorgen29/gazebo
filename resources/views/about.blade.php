@@ -54,7 +54,7 @@
             <!-- Left Image Stack -->
             <div class="relative">
                 <div class="overflow-hidden rounded-sm shadow-md border border-gray-200">
-                    <img src="https://images.unsplash.com/photo-1545232979-fbf59202c396?auto=format&fit=crop&w=1000&q=80"
+                    <img src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1920&q=80"
                         alt="The Gazebo Grounds" class="w-full h-[420px] object-cover">
                 </div>
                 <!-- Badge Overlay -->
@@ -198,7 +198,7 @@
                 Schedule a site visit today or reach out to our team to discuss availability and package details.
             </p>
             <div class="pt-3">
-                <a href="/#contact"
+                <a href="{{ route('inquire') }}"
                     class="inline-flex items-center gap-2 bg-[#B89462] text-white px-8 py-3 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#a38153] transition-all shadow-md">
                     INQUIRE NOW &rarr;
                 </a>

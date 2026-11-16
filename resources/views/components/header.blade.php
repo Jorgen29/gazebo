@@ -29,6 +29,13 @@
                 </div>
             </a>
 
+            {{-- <!-- Brand Logo / Name -->
+            <a href="/" class="flex items-center">
+                <img src="{{ asset('images/logo.png') }}" alt="The Gazebo Logo"
+                    class="h-12 sm:h-16 w-auto object-contain shrink-0">
+            </a> --}}
+
+
             <!-- Desktop Navigation Links -->
             <nav class="hidden lg:flex items-center space-x-6 xl:space-x-8">
                 <a href="{{ request()->is('/') ? '#home' : '/#home' }}"
@@ -41,12 +48,12 @@
                 </a>
                 <a href="{{ route('inquire') }}"
                     class="text-xs xl:text-sm font-medium transition-colors pb-1 border-b-[1.5px] {{ request()->routeIs('inquire') ? 'text-[#3b4d3c] border-[#3b4d3c]' : 'text-gray-700 border-transparent hover:text-[#3b4d3c] hover:border-[#3b4d3c]' }}">
-                    Our Spaces
+                    Venues
                 </a>
-                <a href="{{ route('events') }}"
+                {{-- <a href="{{ route('events') }}"
                     class="text-xs xl:text-sm font-medium text-gray-700 hover:text-[#3b4d3c] transition-colors pb-1 border-b-[1.5px] border-transparent hover:border-[#3b4d3c]">
                     Events
-                </a>
+                </a> --}}
                 <a href="{{ route('gallery') }}"
                     class="text-xs xl:text-sm font-medium text-gray-700 hover:text-[#3b4d3c] transition-colors pb-1 border-b-[1.5px] border-transparent hover:border-[#3b4d3c]">
                     Gallery
@@ -55,6 +62,10 @@
                     class="text-xs xl:text-sm font-medium text-gray-700 hover:text-[#3b4d3c] transition-colors pb-1 border-b-[1.5px] border-transparent hover:border-[#3b4d3c]">
                     Contact
                 </a>
+                <a href="{{ route('rules') }}"
+                    class="text-xs xl:text-sm font-medium text-gray-700 hover:text-[#3b4d3c] transition-colors pb-1 border-b-[1.5px] border-transparent hover:border-[#3b4d3c]">
+                    Rules
+                </a>
             </nav>
 
             <!-- Right Action Area & Mobile Hamburger Button -->
@@ -62,7 +73,7 @@
                 <!-- Desktop CTA -->
                 <a href="{{ route('inquire') }}"
                     class="hidden sm:inline-block bg-[#3b4d3c] text-white px-5 sm:px-7 py-2.5 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#2d3b2e] transition-all shadow-sm">
-                    Inquire Now
+                    Book Now
                 </a>
 
                 <!-- Mobile Menu Button -->

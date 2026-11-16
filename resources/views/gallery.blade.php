@@ -207,7 +207,7 @@
                 Contact our team to discuss booking options and schedule your personal venue tour.
             </p>
             <div class="pt-3">
-                <a href="/#inquire"
+                <a href="{{ route('inquire') }}"
                     class="inline-flex items-center gap-2 bg-[#B89462] text-white px-8 py-3 rounded-full text-xs font-semibold tracking-widest uppercase hover:bg-[#a38153] transition-all shadow-md">
                     INQUIRE NOW &rarr;
                 </a>
