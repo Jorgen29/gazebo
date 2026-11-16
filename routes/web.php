@@ -140,6 +140,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/inquiries/{id}/status', [VenueBookingController::class, 'updateStatus'])->name('inquiries.update-status');
         Route::post('/inquiries/{id}/send-payment-link', [VenueBookingController::class, 'sendPaymentLink'])->name('inquiries.send-payment');
 
+        Route::get('/reports', [VenueBookingController::class, 'reports'])->name('reports');
+
         Route::post('/notifications/mark-all-read', [VenueBookingController::class, 'markAllNotificationsRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/{id}/open', [VenueBookingController::class, 'openNotification'])->name('notifications.open');
 

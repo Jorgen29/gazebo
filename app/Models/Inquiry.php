@@ -31,6 +31,11 @@ class Inquiry extends Model
         ];
     }
 
+    public function venue()
+    {
+        return $this->belongsTo(Venue::class, 'venue_id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
