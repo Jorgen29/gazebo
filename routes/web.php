@@ -141,6 +141,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/inquiries/{id}/send-payment-email', [VenueBookingController::class, 'sendPaymentEmail'])->name('inquiries.send-payment');
         Route::post('/inquiries/{id}/upload-proof', [VenueBookingController::class, 'uploadPaymentProof'])->name('inquiries.upload-proof');
 
+        Route::get('/reports', [VenueBookingController::class, 'reports'])->name('reports');
+
         Route::post('/notifications/mark-all-read', [VenueBookingController::class, 'markAllNotificationsRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/{id}/open', [VenueBookingController::class, 'openNotification'])->name('notifications.open');
 

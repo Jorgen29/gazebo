@@ -480,4 +480,66 @@ class VenueBookingController extends Controller
 
         return back()->with('success', 'Inquiry status updated successfully.');
     }
+
+    public function reports(Request $request)
+    {
+        // 1. Fetch approved inquiries from the inquiries table
+        $approvedQuery = Inquiry::with(['payments', 'venue'])
+            ->where('status', 'approved');
+
+        if ($request->filled('start_date')) {
+            $approvedQuery->whereDate('booking_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $approvedQuery->whereDate('booking_date', '<=', $request->end_date);
+        }
+
+        $rawApprovedInquiries = $approvedQuery->latest('booking_date')->get();
+        $approvedInquiryIds = $rawApprovedInquiries->pluck('id');
+
+        // 2. Strictly sum sales from the payments table where status is paid
+        $totalSales = Payment::whereIn('inquiry_id', $approvedInquiryIds)
+            ->where('status', Payment::STATUS_PAID)
+            ->sum('amount');
+
+        // 3. Map each inquiry and pull its paid amount exclusively from its paid payments relation
+        $approvedInquiries = $rawApprovedInquiries->map(function ($sale) {
+            $paidPayment = $sale->payments
+                ->where('status', Payment::STATUS_PAID)
+                ->sortByDesc('id')
+                ->first();
+
+            $sale->formatted_ref = $sale->booking_reference ?: 'R' . str_pad((string) $sale->id, 6, '0', STR_PAD_LEFT);
+            $sale->formatted_date = $sale->booking_date ? \Carbon\Carbon::parse($sale->booking_date)->format('M d, Y') : 'N/A';
+
+            // Get amount strictly from the payments table record (0.00 if no paid payment exists)
+            $sale->paid_amount = $paidPayment ? (float) $paidPayment->amount : 0.00;
+
+            return $sale;
+        });
+
+        $approvedCount = $approvedInquiries->count();
+        $pendingInquiriesCount = Inquiry::where('status', 'pending')->count();
+        $totalInquiriesCount = Inquiry::count();
+
+        // 4. Return JSON if requested via AJAX/fetch (visible in Network tab), otherwise render Blade view
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'totalSales' => (float) $totalSales,
+                'approvedCount' => $approvedCount,
+                'pendingInquiriesCount' => $pendingInquiriesCount,
+                'totalInquiriesCount' => $totalInquiriesCount,
+                'approvedInquiries' => $approvedInquiries,
+            ]);
+        }
+
+        return view('admin.reports', compact(
+            'approvedInquiries',
+            'totalSales',
+            'approvedCount',
+            'pendingInquiriesCount',
+            'totalInquiriesCount'
+        ));
+    }
 }
