@@ -13,7 +13,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            \App\Contracts\XenditGateway::class,
+            \App\Services\Xendit\XenditSessionGateway::class
+        );
     }
 
     /**
