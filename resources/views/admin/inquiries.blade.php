@@ -21,104 +21,7 @@
     </style>
 </head>
 
-<body class="min-h-screen bg-[#F7F4EE] text-[#1C3627] font-sans antialiased" x-data="{
-    // Search Filter State
-    search: '',
-
-    // Filter Logic Function
-    matchesSearch(customer, email, venue, status, date) {
-        if (!this.search.trim()) return true;
-        const q = this.search.toLowerCase().trim();
-        return (customer && customer.toLowerCase().includes(q)) ||
-            (email && email.toLowerCase().includes(q)) ||
-            (venue && venue.toLowerCase().includes(q)) ||
-            (status && status.toLowerCase().includes(q)) ||
-            (date && date.toLowerCase().includes(q));
-    },
-
-    // Receipt Modal State
-    modalOpen: false,
-    modalReceiptUrl: '',
-    modalCustomer: '',
-    openReceipt(url, customer) {
-        this.modalReceiptUrl = url;
-        this.modalCustomer = customer;
-        this.modalOpen = true;
-    },
-
-    // Action Modal State
-    actionModalOpen: false,
-    detailsModalOpen: false,
-    selectedInquiryId: null,
-    selectedCustomer: '',
-    selectedInquiryStatus: '',
-    selectedVenue: '',
-    selectedBookingDate: '',
-    selectedTimeRange: '',
-    selectedTotalCost: '',
-    selectedEmail: '',
-    selectedContact: '',
-    hasPaymentProof: false,
-    hasPaymentRequested: false,
-    highlightId: {{ $highlightId ?? 'null' }},
-    isHighlighted(id) {
-        return this.highlightId !== null && Number(this.highlightId) === Number(id);
-    },
-    openActionModal(id, customer, proof, paymentRequested, status = '', venue = '', bookingDate = '', timeRange = '', totalCost = '', email = '', contact = '') {
-        this.selectedInquiryId = id;
-        this.selectedCustomer = customer;
-        this.selectedInquiryStatus = status;
-        this.selectedVenue = venue;
-        this.selectedBookingDate = bookingDate;
-        this.selectedTimeRange = timeRange;
-        this.selectedTotalCost = totalCost;
-        this.selectedEmail = email;
-        this.selectedContact = contact;
-        this.hasPaymentProof = Boolean(proof);
-        this.hasPaymentRequested = Boolean(paymentRequested);
-        this.actionModalOpen = true;
-    },
-
-    showInquiryDetails(customer, venue, bookingDate, timeRange, status, totalCost, email, contact) {
-        this.selectedCustomer = customer;
-        this.selectedVenue = venue;
-        this.selectedBookingDate = bookingDate;
-        this.selectedTimeRange = timeRange;
-        this.selectedInquiryStatus = status;
-        this.selectedTotalCost = totalCost;
-        this.selectedEmail = email;
-        this.selectedContact = contact;
-        this.detailsModalOpen = true;
-    },
-
-    confirmReceiptUpload(form) {
-        if (!form) return;
-
-        const fileInput = form.querySelector('input[name=\'payment_proof\']');
-        if (!fileInput || !fileInput.files || !fileInput.files.length) {
-            return;
-        }
-
-        Swal.fire({
-            title: 'Confirm receipt upload?',
-            text: 'This will attach the payment proof to this inquiry.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, upload',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#1C3627',
-            cancelButtonColor: '#d1d5db',
-            customClass: {
-                popup: 'rounded-2xl',
-                confirmButton: 'rounded-xl text-xs px-4 py-2 font-semibold'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
-    }
-}">
+<body class="min-h-screen bg-[#F7F4EE] text-[#1C3627] font-sans antialiased" x-data="inquiriesManagement()">
 
     <div class="flex min-h-screen">
         <x-admin.sidebar />
@@ -131,30 +34,51 @@
                 <!-- Main Card Container -->
                 <div class="bg-[#FFFFFF] border border-[#E5DDD0] rounded-2xl p-6 shadow-xs space-y-6">
 
-                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div>
-                            <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-[#B89462]">Guest Records
-                            </p>
-                            <h1 class="font-serif text-4xl text-[#1C3627] mt-1">Venue Reservation Inquiries</h1>
-                            <p class="text-sm text-[#6B7E73] mt-2">Manage customer inquiries, booking schedules, and
-                                receipts</p>
-                        </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-[#B89462]">Guest Records
+                        </p>
+                        <h1 class="font-serif text-4xl text-[#1C3627] mt-1">Venue Reservation Inquiries</h1>
+                        <p class="text-sm text-[#6B7E73] mt-2">Manage customer inquiries, Xendit payment sessions, and
+                            booking status</p>
+                    </div>
 
-                        <div class="relative flex items-center">
-                            <input type="text" x-model="search" placeholder="Search name, venue, status, date..."
-                                class="bg-[#F7F4EE] text-[#1C3627] placeholder-[#6B7E73] text-xs font-medium rounded-full border border-[#E5DDD0] pl-10 pr-9 py-2.5 w-64 sm:w-80 focus:outline-none focus:ring-2 focus:ring-[#6F927D]/35 focus:bg-white shadow-sm transition-all">
-                            <svg class="w-4 h-4 text-[#B89462] absolute left-3" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <button x-show="search.length > 0" @click="search = ''"
-                                class="absolute right-3 text-[#6B7E73] hover:text-[#1C3627]">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
+                    <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-[#E5DDD0]">
+                            <form method="GET" action="{{ route('admin.inquiries') }}" @submit.prevent>
+                                <select name="status" x-model="statusFilter" @change="applyStatusFilter()"
+                                    class="bg-[#F7F4EE] border border-[#E5DDD0] text-[#1C3627] text-xs rounded-full px-3 py-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-[#6F927D]/35 shadow-sm">
+                                    <option value="">All statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="declined">Declined</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </form>
+
+                            <a href="{{ url(request()->getRequestUri()) }}" x-ref="refreshLink"
+                                @click.prevent="refresh()"
+                                class="inline-flex items-center justify-center gap-1.5 bg-[#FFFFFF] border border-[#E5DDD0] text-[#1C3627] text-xs font-semibold rounded-full px-4 py-2.5 hover:bg-[#F7F4EE] focus:outline-none focus:ring-2 focus:ring-[#6F927D]/35 shadow-sm transition-colors">
+                                <svg class="w-3.5 h-3.5 text-[#B89462]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                            </button>
+                                Refresh
+                            </a>
+
+                            <div class="relative flex items-center">
+                                <input type="text" x-model="search" placeholder="Search name, venue, status, date..."
+                                    class="bg-[#F7F4EE] text-[#1C3627] placeholder-[#6B7E73] text-xs font-medium rounded-full border border-[#E5DDD0] pl-10 pr-9 py-2.5 w-64 sm:w-80 focus:outline-none focus:ring-2 focus:ring-[#6F927D]/35 focus:bg-white shadow-sm transition-all">
+                                <svg class="w-4 h-4 text-[#B89462] absolute left-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <button x-show="search.length > 0" @click="search = ''"
+                                    class="absolute right-3 text-[#6B7E73] hover:text-[#1C3627]">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -166,119 +90,93 @@
                                     <th class="pb-3 px-3">Customer</th>
                                     <th class="pb-3 px-3">Venue</th>
                                     <th class="pb-3 px-3">Status</th>
-                                    <th class="pb-3 px-3">Receipt Proof</th>
+                                    <th class="pb-3 px-3">Payment</th>
                                     <th class="pb-3 px-3">Booking Schedule</th>
                                     <th class="pb-3 px-3">Date Submitted</th>
                                     <th class="pb-3 px-3 text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-dashed divide-[#E5DDD0] text-[#1C3627]">
-                                @forelse($inquiries as $item)
-                                    @php
-                                        $formattedBookingDate = $item->booking_date
-                                            ? \Carbon\Carbon::parse($item->booking_date)->format('F j, Y')
-                                            : 'N/A';
+                                <template x-if="loading">
+                                    <tr>
+                                        <td colspan="7" class="py-8 text-center text-gray-400 font-medium">
+                                            Loading inquiries...
+                                        </td>
+                                    </tr>
+                                </template>
 
-                                        $venueRate = \App\Models\Venue::find($item->venue_id)?->price_per_hour ?? 0;
-                                        $hours = 0;
-                                        if ($item->start_time && $item->end_time) {
-                                            $startSeconds = strtotime($item->start_time);
-                                            $endSeconds = strtotime($item->end_time);
-                                            if ($endSeconds > $startSeconds) {
-                                                $hours = ($endSeconds - $startSeconds) / 3600;
-                                            }
-                                        }
-                                        $totalCost = max($hours, 0) * (float) $venueRate;
-                                        $totalCostLabel = '₱' . number_format($totalCost, 2);
-                                    @endphp
+                                <template x-if="!loading && listError">
+                                    <tr>
+                                        <td colspan="7" class="py-8 text-center text-red-500 font-medium">
+                                            Unable to load inquiries. Please refresh the page.
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <template x-if="!loading && !listError && filteredInquiries.length === 0">
+                                    <tr>
+                                        <td colspan="7" class="py-8 text-center text-gray-400 font-medium">
+                                            No reservation inquiries found.
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <template x-for="item in filteredInquiries" :key="item.id">
                                     <tr class="transition-colors"
-                                        :class="isHighlighted({{ $item->id }}) ?
+                                        :class="isHighlighted(item.id) ?
                                             'bg-[#F7F1E7] ring-1 ring-[#B89462] shadow-[inset_0_0_0_1px_#B89462]' :
-                                            'hover:bg-[#F7F4EE]/60'"
-                                        x-show="matchesSearch(
-                                        '{{ addslashes($item->full_name) }}',
-                                        '{{ addslashes($item->email) }}',
-                                        '{{ addslashes($item->venue_title) }}',
-                                        '{{ addslashes($item->status) }}',
-                                        '{{ addslashes($formattedBookingDate) }}'
-                                    )">
+                                            'hover:bg-[#F7F4EE]/60'">
 
                                         <td class="py-4 px-3">
-                                            <div class="font-bold text-[#1C3627] text-xs">{{ $item->full_name }}</div>
-                                            <div class="text-[11px] text-[#6B7E73]">{{ $item->email }}</div>
+                                            <div class="font-bold text-[#1C3627] text-xs" x-text="item.full_name"></div>
+                                            <div class="text-[11px] text-[#6B7E73]" x-text="item.email"></div>
                                         </td>
 
-                                        <td class="py-4 px-3 font-semibold text-[#1C3627]">
-                                            {{ $item->venue_title }}
+                                        <td class="py-4 px-3 font-semibold text-[#1C3627]" x-text="item.venue_title"></td>
+
+                                        <td class="py-4 px-3">
+                                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border tracking-[0.14em]"
+                                                :class="statusBadgeClass(item.status)" x-text="item.status"></span>
                                         </td>
 
                                         <td class="py-4 px-3">
-                                            @if ($item->status === 'approved')
-                                                <span
-                                                    class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#EAF4EE] text-[#1C3627] uppercase border border-[#D4E7D9] tracking-[0.14em]">Approved</span>
-                                            @elseif($item->status === 'declined')
-                                                <span
-                                                    class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#FCECEC] text-[#7A2B2B] uppercase border border-[#EEC6C6] tracking-[0.14em]">Declined</span>
-                                            @elseif($item->status === 'cancelled')
-                                                <span
-                                                    class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#F3EFEA] text-[#5A514A] uppercase border border-[#D9D2CA] tracking-[0.14em]">Cancelled</span>
-                                            @else
-                                                <span
-                                                    class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#F7F1E7] text-[#9B6C2D] uppercase border border-[#E9D7B5] tracking-[0.14em]">Pending</span>
-                                            @endif
-                                        </td>
-
-                                        <td class="py-4 px-3 text-left">
-                                            @if ($item->payment_proof)
-                                                <div class="flex justify-start w-full">
-                                                    <button type="button"
-                                                        @click="openReceipt('{{ asset('storage/' . $item->payment_proof) }}', '{{ addslashes($item->full_name) }}')"
-                                                        class="inline-flex items-center justify-start gap-1.5 text-[#1C3627] hover:text-[#2E4A3B] font-semibold text-xs underline decoration-[#E5DDD0] underline-offset-2 cursor-pointer">
-                                                        <svg class="w-3.5 h-3.5 text-[#B89A62]" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                        View Receipt
-                                                    </button>
+                                            <template x-if="item.payment">
+                                                <div class="space-y-1">
+                                                    <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border tracking-[0.14em]"
+                                                        :class="paymentBadgeClass(item.payment.status)"
+                                                        x-text="item.payment.status"></span>
+                                                    <div class="text-[11px] font-semibold text-[#1C3627]"
+                                                        x-text="item.payment.amount"></div>
+                                                    <template x-if="item.payment.expires_at">
+                                                        <div class="text-[10px] text-[#6B7E73]">
+                                                            Expires <span x-text="item.payment.expires_at"></span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="item.payment.payment_link_url">
+                                                        <a :href="item.payment.payment_link_url" target="_blank"
+                                                            rel="noopener"
+                                                            class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1C3627] underline decoration-[#E5DDD0] underline-offset-2 hover:text-[#2E4A3B]">
+                                                            Open payment link
+                                                        </a>
+                                                    </template>
                                                 </div>
-                                            @else
-                                                <form action="{{ route('admin.inquiries.upload-proof', $item->id) }}"
-                                                    method="POST" enctype="multipart/form-data"
-                                                    class="flex w-full items-center justify-start gap-1.5"
-                                                    @submit.prevent="confirmReceiptUpload($event.currentTarget)">
-                                                    @csrf
-                                                    <input type="file" name="payment_proof" required class="hidden"
-                                                        x-ref="receiptFile{{ $item->id }}"
-                                                        @change="if ($event.target.files && $event.target.files.length) { $event.target.form.dispatchEvent(new Event('submit', { cancelable: true })); }">
-                                                    <button type="button"
-                                                        @click="$refs.receiptFile{{ $item->id }}.click()"
-                                                        class="px-2.5 py-1.5 bg-[#1C3627] text-white rounded-full text-[10px] font-semibold uppercase tracking-[0.14em] hover:bg-[#2E4A3B]">Upload</button>
-                                                </form>
-                                            @endif
+                                            </template>
+                                            <template x-if="!item.payment">
+                                                <span class="text-[11px] text-[#6B7E73] italic">No payment link</span>
+                                            </template>
                                         </td>
 
                                         <td class="py-4 px-3 font-medium text-[#1C3627]">
-                                            {{ $formattedBookingDate }}
-                                            <span class="block text-[11px] text-[#B89462] font-semibold">
-                                                {{ $item->start_time ? \Carbon\Carbon::parse($item->start_time)->format('g:i A') : '' }}
-                                                @if ($item->end_time)
-                                                    - {{ \Carbon\Carbon::parse($item->end_time)->format('g:i A') }}
-                                                @endif
-                                            </span>
+                                            <span x-text="item.booking_date"></span>
+                                            <span class="block text-[11px] text-[#B89462] font-semibold"
+                                                x-text="item.time_range"></span>
                                         </td>
 
-                                        <td class="py-4 px-3 font-medium text-[#6B7E73]">
-                                            {{ $item->created_at ? \Carbon\Carbon::parse($item->created_at)->format('F j, Y g:i A') : 'N/A' }}
-                                        </td>
+                                        <td class="py-4 px-3 font-medium text-[#6B7E73]" x-text="item.submitted_at"></td>
 
                                         <td class="py-4 px-3 text-right">
                                             <div class="flex items-center justify-end">
-                                                <button type="button"
-                                                    @click="openActionModal({{ $item->id }}, '{{ addslashes($item->full_name) }}', {{ $item->payment_proof ? 'true' : 'false' }}, {{ $item->payment_requested_at ? 'true' : 'false' }}, '{{ $item->status }}', '{{ addslashes($item->venue_title) }}', '{{ addslashes($formattedBookingDate) }}', '{{ addslashes($item->start_time ? \Carbon\Carbon::parse($item->start_time)->format('g:i A') : '') }} - {{ addslashes($item->end_time ? \Carbon\Carbon::parse($item->end_time)->format('g:i A') : '') }}', '{{ addslashes($totalCostLabel) }}', '{{ addslashes($item->email) }}', '{{ addslashes($item->email_contact) }}')"
+                                                <button type="button" @click="openActionModal(item.modal)"
                                                     class="w-9 h-9 inline-flex items-center justify-center bg-[#F7F4EE] hover:bg-[#1C3627] text-[#1C3627] hover:text-white rounded-full transition-all border border-[#E5DDD0] shadow-sm">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                         viewBox="0 0 24 24">
@@ -289,13 +187,7 @@
                                             </div>
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="py-8 text-center text-gray-400 font-medium">
-                                            No reservation inquiries found.
-                                        </td>
-                                    </tr>
-                                @endforelse
+                                </template>
                             </tbody>
                         </table>
                     </div>
@@ -304,34 +196,33 @@
                     <div
                         class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-[#E5DDD0]">
                         <div class="flex items-center gap-3 text-xs text-[#6B7E73]">
-                            <select
-                                class="bg-[#F7F4EE] border border-[#E5DDD0] text-[#1C3627] text-xs rounded-full px-2.5 py-1.5 font-semibold focus:ring-0">
-                                <option value="10" selected>10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                            </select>
                             <span>
-                                @if ($inquiries instanceof \Illuminate\Pagination\LengthAwarePaginator)
-                                    Showing {{ $inquiries->firstItem() ?? 0 }} to {{ $inquiries->lastItem() ?? 0 }} of
-                                    {{ $inquiries->total() }} records
-                                @else
-                                    Showing 1 to {{ count($inquiries) }} of {{ count($inquiries) }} records
-                                @endif
+                                Showing <span x-text="from ?? 0"></span> to <span x-text="to ?? 0"></span> of
+                                <span x-text="total"></span> records
                             </span>
                         </div>
 
                         <div class="flex items-center gap-1 text-xs">
-                            <button
-                                class="p-1.5 text-[#B7B7B7] hover:text-[#6B7E73] transition-colors cursor-not-allowed"
-                                disabled>
+                            <button type="button" @click="goToPage(currentPage - 1)" :disabled="!prevPageUrl"
+                                class="p-1.5 transition-colors"
+                                :class="prevPageUrl ? 'text-[#6B7E73] hover:text-[#1C3627]' : 'text-[#B7B7B7] cursor-not-allowed'">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M15 19l-7-7 7-7" />
                                 </svg>
                             </button>
-                            <button
-                                class="w-7 h-7 rounded-full bg-[#1C3627] text-white font-bold flex items-center justify-center shadow-sm">1</button>
-                            <button class="p-1.5 text-[#6B7E73] hover:text-[#1C3627] transition-colors">
+
+                            <template x-for="link in numberedLinks" :key="link.label">
+                                <button type="button" @click="link.url && goToPageUrl(link.url)"
+                                    :disabled="!link.url"
+                                    class="w-7 h-7 rounded-full font-bold flex items-center justify-center shadow-sm transition-colors"
+                                    :class="link.active ? 'bg-[#1C3627] text-white' : (link.url ? 'text-[#6B7E73] hover:bg-[#F7F4EE]' : 'text-[#B7B7B7] cursor-not-allowed')"
+                                    x-text="link.label"></button>
+                            </template>
+
+                            <button type="button" @click="goToPage(currentPage + 1)" :disabled="!nextPageUrl"
+                                class="p-1.5 transition-colors"
+                                :class="nextPageUrl ? 'text-[#6B7E73] hover:text-[#1C3627]' : 'text-[#B7B7B7] cursor-not-allowed'">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 5l7 7-7 7" />
@@ -346,7 +237,6 @@
         </div>
 
         <!-- Modals -->
-        <x-admin.receipt-modal />
         <x-admin.action-modal />
 
         <div x-show="detailsModalOpen" x-cloak
@@ -419,6 +309,231 @@
                 </div>
             </div>
         </div>
+
+        <!-- Inquiries List State -->
+        <script>
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('inquiriesManagement', () => ({
+                    inquiries: [],
+                    loading: true,
+                    listError: false,
+                    search: '',
+                    statusFilter: @js((string) ($status ?? '')),
+                    highlightId: @js($highlightId ?? null),
+                    currentPage: {{ (int) request()->query('page', 1) }},
+                    lastPage: 1,
+                    total: 0,
+                    from: null,
+                    to: null,
+                    prevPageUrl: null,
+                    nextPageUrl: null,
+                    links: [],
+
+                    // Action Modal State
+                    actionModalOpen: false,
+                    detailsModalOpen: false,
+                    selectedInquiryId: null,
+                    selectedCustomer: '',
+                    selectedInquiryStatus: '',
+                    selectedVenue: '',
+                    selectedBookingDate: '',
+                    selectedTimeRange: '',
+                    selectedTotalCost: '',
+                    selectedEmail: '',
+                    selectedContact: '',
+                    selectedPaymentStatus: '',
+                    selectedPaymentAmount: '',
+                    selectedPaymentExpiry: '',
+                    selectedPaymentLinkUrl: '',
+                    selectedRefundStatus: '',
+                    selectedRefundAmount: '',
+                    selectedRefundFailureCode: '',
+                    selectedRefundNote: '',
+                    selectedRefundReason: 'CANCELLATION',
+                    refundNote: '',
+                    refundConfirmed: false,
+                    canRefund: false,
+
+                    routes: {
+                        index: @js(route('admin.inquiries')),
+                    },
+
+                    init() {
+                        this.fetchInquiries(this.currentPage);
+                    },
+
+                    get filteredInquiries() {
+                        return this.inquiries.filter((item) => this.matchesSearch(
+                            item.full_name,
+                            item.email,
+                            item.venue_title,
+                            item.status,
+                            item.booking_date
+                        ));
+                    },
+
+                    get numberedLinks() {
+                        return this.links.filter((link) => /^\d+$/.test(String(link.label)));
+                    },
+
+                    buildUrl(page = 1) {
+                        const params = new URLSearchParams();
+                        if (this.statusFilter) params.set('status', this.statusFilter);
+                        if (page > 1) params.set('page', page);
+
+                        const query = params.toString();
+
+                        return query ? `${this.routes.index}?${query}` : this.routes.index;
+                    },
+
+                    fetchInquiries(page = 1) {
+                        this.loading = true;
+                        this.listError = false;
+                        this.currentPage = Math.max(1, Number(page) || 1);
+
+                        fetch(this.buildUrl(this.currentPage), {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            })
+                            .then((res) => {
+                                if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+                                return res.json();
+                            })
+                            .then((data) => {
+                                this.inquiries = data.data ?? [];
+                                this.currentPage = data.current_page ?? 1;
+                                this.lastPage = data.last_page ?? 1;
+                                this.total = data.total ?? 0;
+                                this.from = data.from ?? null;
+                                this.to = data.to ?? null;
+                                this.prevPageUrl = data.prev_page_url ?? null;
+                                this.nextPageUrl = data.next_page_url ?? null;
+                                this.links = data.links ?? [];
+                                this.loading = false;
+                                this.syncUrl();
+                            })
+                            .catch((err) => {
+                                console.error('Failed fetching inquiries:', err);
+                                this.inquiries = [];
+                                this.loading = false;
+                                this.listError = true;
+                            });
+                    },
+
+                    applyStatusFilter() {
+                        this.fetchInquiries(1);
+                    },
+
+                    refresh() {
+                        this.fetchInquiries(this.currentPage);
+                    },
+
+                    goToPage(page) {
+                        if (page < 1 || page > this.lastPage) return;
+
+                        this.fetchInquiries(page);
+                    },
+
+                    goToPageUrl(url) {
+                        if (!url) return;
+
+                        this.fetchInquiries(new URL(url).searchParams.get('page') ?? 1);
+                    },
+
+                    syncUrl() {
+                        const url = new URL(window.location.href);
+
+                        if (this.statusFilter) {
+                            url.searchParams.set('status', this.statusFilter);
+                        } else {
+                            url.searchParams.delete('status');
+                        }
+
+                        if (this.currentPage > 1) {
+                            url.searchParams.set('page', this.currentPage);
+                        } else {
+                            url.searchParams.delete('page');
+                        }
+
+                        window.history.replaceState({}, '', url);
+
+                        if (this.$refs.refreshLink) {
+                            this.$refs.refreshLink.href = this.buildUrl(this.currentPage);
+                        }
+                    },
+
+                    matchesSearch(customer, email, venue, status, date) {
+                        if (!this.search.trim()) return true;
+
+                        const q = this.search.toLowerCase().trim();
+
+                        return (customer && customer.toLowerCase().includes(q)) ||
+                            (email && email.toLowerCase().includes(q)) ||
+                            (venue && venue.toLowerCase().includes(q)) ||
+                            (status && status.toLowerCase().includes(q)) ||
+                            (date && date.toLowerCase().includes(q));
+                    },
+
+                    isHighlighted(id) {
+                        return this.highlightId !== null && Number(this.highlightId) === Number(id);
+                    },
+
+                    statusBadgeClass(status) {
+                        const classes = {
+                            approved: 'bg-[#EAF4EE] text-[#1C3627] border-[#D4E7D9]',
+                            declined: 'bg-[#FCECEC] text-[#7A2B2B] border-[#EEC6C6]',
+                            cancelled: 'bg-[#F3EFEA] text-[#5A514A] border-[#D9D2CA]',
+                        };
+
+                        return classes[status] ?? 'bg-[#F7F1E7] text-[#9B6C2D] border-[#E9D7B5]';
+                    },
+
+                    paymentBadgeClass(status) {
+                        const classes = {
+                            paid: 'bg-[#EAF4EE] text-[#1C3627] border-[#D4E7D9]',
+                            pending: 'bg-[#F7F1E7] text-[#9B6C2D] border-[#E9D7B5]',
+                            expired: 'bg-[#FCECEC] text-[#7A2B2B] border-[#EEC6C6]',
+                            refunded: 'bg-[#EEF0FA] text-[#3B3F7A] border-[#D5D9F0]',
+                        };
+
+                        return classes[status] ?? 'bg-[#F3EFEA] text-[#5A514A] border-[#D9D2CA]';
+                    },
+
+                    openActionModal(data) {
+                        this.selectedInquiryId = data.id ?? null;
+                        this.selectedCustomer = data.customer ?? '';
+                        this.selectedInquiryStatus = data.status ?? '';
+                        this.selectedVenue = data.venue ?? '';
+                        this.selectedBookingDate = data.bookingDate ?? '';
+                        this.selectedTimeRange = data.timeRange ?? '';
+                        this.selectedTotalCost = data.totalCost ?? '';
+                        this.selectedEmail = data.email ?? '';
+                        this.selectedContact = data.contact ?? '';
+                        this.selectedPaymentStatus = data.paymentStatus ?? '';
+                        this.selectedPaymentAmount = data.paymentAmount ?? '';
+                        this.selectedPaymentExpiry = data.paymentExpiry ?? '';
+                        this.selectedPaymentLinkUrl = data.paymentLinkUrl ?? '';
+                        this.selectedRefundStatus = data.refundStatus ?? '';
+                        this.selectedRefundAmount = data.refundAmount ?? '';
+                        this.selectedRefundFailureCode = data.refundFailureCode ?? '';
+                        this.selectedRefundNote = data.refundNote ?? '';
+                        this.selectedRefundReason = 'CANCELLATION';
+                        this.refundNote = '';
+                        this.refundConfirmed = false;
+                        this.canRefund = data.canRefund ?? false;
+                        this.actionModalOpen = true;
+                    },
+
+                    showInquiryDetails() {
+                        this.detailsModalOpen = true;
+                        this.actionModalOpen = false;
+                    }
+                }));
+            });
+        </script>
 
         <!-- SweetAlert Session Alerts -->
         @if (session('success'))

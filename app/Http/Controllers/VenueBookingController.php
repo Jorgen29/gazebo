@@ -2,20 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Inquiry;
-use App\Models\Venue;
-use App\Support\VenuePresenter;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Validation\Rule;
+use App\Exceptions\XenditGatewayException;
 use App\Mail\InquiryStatusNotification;
 use App\Mail\NewInquiryNotification;
-use App\Mail\PaymentInstructionsMail;
+use App\Models\Inquiry;
 use App\Models\Notification;
+use App\Models\Payment;
+use App\Models\Refund;
+use App\Models\Venue;
+use App\Services\InquiryAmountCalculator;
+use App\Services\InquiryPaymentService;
+use App\Services\RefundService;
+use App\Support\VenuePresenter;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+use Throwable;
 
 class VenueBookingController extends Controller
 {
+    public function __construct(
+        private readonly InquiryPaymentService $payments,
+        private readonly RefundService $refunds
+    ) {}
+
     /**
      * Resolve the requested venue (numeric id or slug) to an active venue.
      */
@@ -66,7 +79,7 @@ class VenueBookingController extends Controller
             'date' => Carbon::parse($inquiry->booking_date)->format('Y-m-d'),
             'start' => $start->format('H:i'),
             'end' => $end->format('H:i'),
-            'label' => $start->format('g:i A') . ' - ' . $end->format('g:i A') . " ({$inquiry->full_name})",
+            'label' => $start->format('g:i A').' - '.$end->format('g:i A')." ({$inquiry->full_name})",
         ];
     }
 
@@ -115,17 +128,17 @@ class VenueBookingController extends Controller
     public function storeInquiry(Request $request)
     {
         $validated = $request->validate([
-            'venue_id'      => [
+            'venue_id' => [
                 'required',
                 'string',
                 Rule::exists('venues', 'id')->where('is_active', true),
             ],
-            'venue_title'   => 'nullable|string',
-            'booking_date'  => 'required|date',
-            'start_time'    => 'required',
-            'end_time'      => 'required',
-            'full_name'     => 'required|string|max:255',
-            'email'         => 'required|email|max:255',
+            'venue_title' => 'nullable|string',
+            'booking_date' => 'required|date',
+            'start_time' => 'required',
+            'end_time' => 'required',
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
             'email_contact' => 'required|string|max:255',
         ]);
 
@@ -165,7 +178,7 @@ class VenueBookingController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log error if mail server fails
-            \Log::error('Mail sending failed: ' . $e->getMessage(), [
+            \Log::error('Mail sending failed: '.$e->getMessage(), [
                 'inquiry_id' => $inquiry->id,
                 'email' => $inquiry->email,
             ]);
@@ -193,15 +206,123 @@ class VenueBookingController extends Controller
         $status = $request->query('status');
         $highlightId = $request->query('highlight_id');
 
-        $query = Inquiry::latest();
+        if (! $request->wantsJson() && ! $request->ajax()) {
+            // The list itself is fetched separately so the page shell paints immediately.
+            return view('admin.inquiries', compact('highlightId', 'status'));
+        }
+
+        $query = Inquiry::query()
+            ->with([
+                'latestPaymentRecord' => fn ($payment) => $payment->select([
+                    'payments.id',
+                    'payments.inquiry_id',
+                    'payments.status',
+                    'payments.amount',
+                    'payments.currency',
+                    'payments.payment_link_url',
+                    'payments.payment_request_id',
+                    'payments.expires_at',
+                ]),
+                'latestPaymentRecord.latestRefundRecord' => fn ($refund) => $refund->select([
+                    'refunds.id',
+                    'refunds.payment_id',
+                    'refunds.status',
+                    'refunds.amount',
+                    'refunds.failure_code',
+                    'refunds.note',
+                    'refunds.refunded_at',
+                ]),
+                'venue:id,price_per_hour',
+            ])
+            ->latest();
 
         if ($status) {
             $query->where('status', $status);
         }
 
-        $inquiries = $query->paginate(10);
+        $inquiries = $query->paginate(10)->withQueryString();
 
-        return view('admin.inquiries', compact('inquiries', 'highlightId'));
+        $inquiries->through(fn (Inquiry $inquiry) => $this->formatAdminInquiry($inquiry));
+
+        return response()->json($inquiries);
+    }
+
+    /**
+     * Shape an inquiry for the admin inquiries list (client-rendered).
+     */
+    private function formatAdminInquiry(Inquiry $inquiry): array
+    {
+        $latestPayment = $inquiry->latestPaymentRecord;
+        $latestRefund = $latestPayment?->latestRefundRecord;
+        $computedAmount = null;
+
+        try {
+            $computedAmount = app(InquiryAmountCalculator::class)
+                ->calculate($inquiry, $inquiry->venue);
+        } catch (Throwable) {
+            $computedAmount = null;
+        }
+
+        $totalCostLabel = $latestPayment
+            ? '₱'.number_format((float) $latestPayment->amount, 2)
+            : ($computedAmount !== null ? '₱'.number_format((float) $computedAmount, 2) : '—');
+
+        $refundAmount = $latestRefund?->amount ?? $latestPayment?->amount;
+
+        $canRefund = $latestPayment !== null
+            && $latestPayment->isPaid()
+            && filled($latestPayment->payment_request_id)
+            && ($latestRefund === null || (! $latestRefund->isPending() && ! $latestRefund->isSucceeded()));
+
+        $formattedBookingDate = $inquiry->booking_date
+            ? Carbon::parse($inquiry->booking_date)->format('F j, Y')
+            : 'N/A';
+
+        $timeRangeLabel = trim(
+            ($inquiry->start_time ? Carbon::parse($inquiry->start_time)->format('g:i A') : '').
+            ($inquiry->end_time ? ' - '.Carbon::parse($inquiry->end_time)->format('g:i A') : '')
+        );
+
+        return [
+            'id' => $inquiry->id,
+            'full_name' => $inquiry->full_name,
+            'email' => $inquiry->email,
+            'email_contact' => $inquiry->email_contact,
+            'venue_title' => $inquiry->venue_title,
+            'status' => $inquiry->status,
+            'booking_date' => $formattedBookingDate,
+            'start_time' => $inquiry->start_time ? Carbon::parse($inquiry->start_time)->format('g:i A') : '',
+            'end_time' => $inquiry->end_time ? Carbon::parse($inquiry->end_time)->format('g:i A') : '',
+            'time_range' => $timeRangeLabel,
+            'submitted_at' => $inquiry->created_at ? Carbon::parse($inquiry->created_at)->format('F j, Y g:i A') : 'N/A',
+            'total_cost' => $totalCostLabel,
+            'payment' => $latestPayment ? [
+                'status' => $latestPayment->status,
+                'amount' => '₱'.number_format((float) $latestPayment->amount, 2),
+                'expires_at' => $latestPayment->expires_at?->format('M j, Y g:i A'),
+                'payment_link_url' => $latestPayment->payment_link_url,
+            ] : null,
+            'modal' => [
+                'id' => $inquiry->id,
+                'customer' => $inquiry->full_name,
+                'status' => $inquiry->status,
+                'venue' => $inquiry->venue_title,
+                'bookingDate' => $formattedBookingDate,
+                'timeRange' => $timeRangeLabel,
+                'totalCost' => $totalCostLabel,
+                'email' => $inquiry->email,
+                'contact' => $inquiry->email_contact,
+                'paymentStatus' => $latestPayment?->status,
+                'paymentAmount' => $latestPayment ? '₱'.number_format((float) $latestPayment->amount, 2) : '',
+                'paymentExpiry' => $latestPayment?->expires_at?->format('M j, Y g:i A'),
+                'paymentLinkUrl' => $latestPayment?->payment_link_url,
+                'refundStatus' => $latestRefund?->status,
+                'refundAmount' => $refundAmount !== null ? '₱'.number_format((float) $refundAmount, 2) : null,
+                'refundFailureCode' => $latestRefund?->failure_code,
+                'refundNote' => $latestRefund?->note,
+                'canRefund' => $canRefund,
+            ],
+        ];
     }
 
     public function markAllNotificationsRead()
@@ -230,58 +351,68 @@ class VenueBookingController extends Controller
         return redirect()->route('admin.inquiries');
     }
 
-    // Send GCash Payment instructions email to customer
-    public function sendPaymentEmail($id)
+    // Send a Xendit hosted payment link to the customer
+    public function sendPaymentLink($id)
     {
         $inquiry = Inquiry::findOrFail($id);
 
-        if (!$inquiry->email) {
-            return back()->with('error', 'Customer email address is missing.');
+        try {
+            $this->payments->createSession($inquiry);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        } catch (XenditGatewayException $exception) {
+            return back()->with('error', 'Unable to create the payment link: '.$exception->getMessage());
+        } catch (Throwable $exception) {
+            \Log::error('Payment session creation failed.', [
+                'inquiry_id' => $inquiry->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->with('error', 'Unable to create the payment link. Please try again.');
         }
 
-        if (empty($inquiry->booking_reference)) {
-            $inquiry->booking_reference = Inquiry::generateBookingReference($inquiry);
-            $inquiry->save();
-        }
-
-        Mail::to($inquiry->email)->queue(new PaymentInstructionsMail($inquiry));
-
-        $inquiry->update([
-            'payment_requested_at' => now(),
-        ]);
-
-        return back()->with('success', 'Payment instruction email sent to customer!');
+        return back()->with('success', 'Payment link sent to '.$inquiry->email.'.');
     }
 
-    // Upload proof of payment manually from admin (when customer replies with screenshot)
-    public function uploadPaymentProof(Request $request, $id)
+    // Initiate a full refund for the latest paid Xendit payment
+    public function refund(Request $request, $id)
     {
-        $request->validate([
-            'payment_proof' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+        $validated = $request->validate([
+            'reason' => ['required', Rule::in(Refund::REASONS)],
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $inquiry = Inquiry::findOrFail($id);
+        $payment = $inquiry->latestPayment();
 
-        if ($request->hasFile('payment_proof')) {
-            $path = $request->file('payment_proof')->store('payment_proofs', 'public');
-            $inquiry->update([
-                'payment_proof' => $path,
-            ]);
-
-            Notification::create([
-                'inquiry_id' => $inquiry->id,
-                'type' => 'payment_received',
-                'email' => $inquiry->email,
-                'subject' => 'Payment proof received',
-                'message' => 'A client uploaded a payment proof for their booking.',
-                'metadata' => [
-                    'payment_path' => $path,
-                    'booking_reference' => $inquiry->booking_reference,
-                ],
-            ]);
+        if ($payment === null) {
+            return back()->with('error', 'This inquiry has no payment to refund.');
         }
 
-        return back()->with('success', 'Payment proof attached successfully. You can now approve the booking.');
+        // TODO: Offline/manual refunds are not supported. A payment without a Xendit
+        // `payment_request_id` needs a separate audit-only refund path.
+        try {
+            $this->refunds->initiate(
+                $payment,
+                $validated['reason'],
+                $validated['note'] ?? null,
+                $request->user()
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        } catch (XenditGatewayException $exception) {
+            return back()->with('error', 'Unable to create the refund: '.$exception->getMessage());
+        } catch (Throwable $exception) {
+            \Log::error('Refund creation failed.', [
+                'inquiry_id' => $inquiry->id,
+                'payment_id' => $payment->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->with('error', 'Unable to create the refund. Please try again.');
+        }
+
+        return back()->with('success', 'Full refund requested. The payment stays paid until Xendit confirms the refund.');
     }
 
     // Update Inquiry status
@@ -289,15 +420,51 @@ class VenueBookingController extends Controller
     {
         $request->validate(['status' => 'required|in:pending,approved,declined,cancelled']);
 
-        $inquiry = Inquiry::findOrFail($id);
         $newStatus = $request->status;
-        $inquiry->update(['status' => $newStatus]);
 
-        if (!empty($inquiry->email) && in_array($newStatus, ['approved', 'declined', 'cancelled'], true)) {
+        // INFO: Approval requires the latest payment to be paid. Decline/cancel are blocked
+        // only while that payment is paid; once a refund succeeds the payment becomes refunded
+        // and decline/cancel are allowed. A pending refund still blocks because the payment
+        // stays paid until the refund reaches a successful final state.
+        $result = DB::transaction(function () use ($id, $newStatus) {
+            $inquiry = Inquiry::query()->lockForUpdate()->findOrFail($id);
+            $latestPayment = $inquiry->latestPayment();
+
+            if ($newStatus === 'approved' && ! $latestPayment?->isPaid()) {
+                return [
+                    'ok' => false,
+                    'message' => 'This inquiry cannot be approved until its latest payment is paid.',
+                ];
+            }
+
+            if (in_array($newStatus, ['declined', 'cancelled'], true) && $latestPayment?->isPaid()) {
+                return [
+                    'ok' => false,
+                    'message' => 'This inquiry cannot be declined or cancelled because its latest payment is paid.',
+                ];
+            }
+
+            if (in_array($newStatus, ['declined', 'cancelled'], true)) {
+                $this->payments->cancelActiveSessions($inquiry);
+            }
+
+            $inquiry->update(['status' => $newStatus]);
+
+            return ['ok' => true, 'inquiry' => $inquiry];
+        });
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['message']);
+        }
+
+        /** @var Inquiry $inquiry */
+        $inquiry = $result['inquiry'];
+
+        if (! empty($inquiry->email) && in_array($newStatus, ['approved', 'declined', 'cancelled'], true)) {
             try {
                 Mail::to($inquiry->email)->queue(new InquiryStatusNotification($inquiry, $newStatus));
             } catch (\Exception $e) {
-                \Log::error('Inquiry status email failed: ' . $e->getMessage());
+                \Log::error('Inquiry status email failed: '.$e->getMessage());
             }
         }
 

@@ -25,7 +25,7 @@
 
             <main class="p-6 lg:p-8 space-y-8 flex-1 overflow-y-auto">
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                     <div
                         class="bg-[#FFFDFB] border border-[#E5DDD0] p-6 rounded-2xl shadow-[0_12px_30px_rgba(28,54,39,0.05)] flex items-center justify-between transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_40px_rgba(28,54,39,0.08)]">
                         <div>

@@ -58,6 +58,7 @@
                     successful execution of your event.</p>
             </div>
 
+            {{-- TODO: Update Sections 1 (deposit/confirmation) and 2 (payment submission) for the Xendit Payment Sessions flow; refund policy copy is also still pending. The current copy still describes a non-refundable deposit, payment proof, GCash screenshots, and payment-instruction emails. --}}
             <!-- Policies List -->
             <div class="space-y-8">
                 <div class="space-y-2">

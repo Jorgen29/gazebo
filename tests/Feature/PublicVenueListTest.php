@@ -194,6 +194,13 @@ class PublicVenueListTest extends TestCase
             'status' => 'pending',
         ]);
 
+        $inquiry->payments()->create([
+            'payment_session_id' => 'ps_status_email',
+            'status' => \App\Models\Payment::STATUS_PAID,
+            'amount' => '1000.00',
+            'currency' => 'PHP',
+        ]);
+
         $this->patch("/admin/inquiries/{$inquiry->id}/status", ['status' => 'approved'])
             ->assertRedirect();
 
@@ -202,7 +209,7 @@ class PublicVenueListTest extends TestCase
         });
     }
 
-    public function test_client_submission_and_payment_upload_create_notification_records(): void
+    public function test_client_submission_creates_a_booking_notification(): void
     {
         $venue = Venue::create([
             'title' => 'Notification Venue',
@@ -229,25 +236,6 @@ class PublicVenueListTest extends TestCase
         $this->assertDatabaseHas('notifications', [
             'type' => 'booking_request',
             'email' => 'newclient@example.com',
-        ]);
-
-        $inquiry = Inquiry::first();
-
-        $admin = \App\Models\User::factory()->create([
-            'email' => 'admin@gmail.com',
-            'username' => 'admin',
-            'password' => bcrypt('password123'),
-        ]);
-
-        $this->actingAs($admin, 'web');
-
-        $this->post('/admin/inquiries/' . $inquiry->id . '/upload-proof', [
-            'payment_proof' => UploadedFile::fake()->image('payment-proof.jpg', 1200, 900),
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('notifications', [
-            'inquiry_id' => $inquiry->id,
-            'type' => 'payment_received',
         ]);
     }
 
