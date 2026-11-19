@@ -362,6 +362,16 @@
                         this.fetchInquiries(this.currentPage);
                     },
 
+                    showActionLoading(title) {
+                        Swal.fire({
+                            title,
+                            text: 'Please wait',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => Swal.showLoading(),
+                        });
+                    },
+
                     get filteredInquiries() {
                         return this.inquiries.filter((item) => this.matchesSearch(
                             item.full_name,

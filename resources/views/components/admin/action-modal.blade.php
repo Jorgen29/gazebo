@@ -144,7 +144,7 @@
 
             <!-- Send / Resend Payment Link -->
             <form :action="`{{ route('admin.inquiries.send-payment', ':id') }}`.replace(':id', selectedInquiryId)"
-                method="POST">
+                method="POST" @submit="showActionLoading('Sending payment link...')">
                 @csrf
                 <button type="submit" x-bind:disabled="selectedInquiryStatus !== 'pending'"
                     x-bind:class="selectedInquiryStatus !== 'pending' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5DDD0]/60'"
@@ -161,7 +161,7 @@
 
             <!-- Approve Inquiry -->
             <form :action="`{{ route('admin.inquiries.update-status', ':id') }}`.replace(':id', selectedInquiryId)"
-                method="POST">
+                method="POST" @submit="showActionLoading('Approving reservation...')">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="approved">
@@ -183,7 +183,7 @@
 
             <!-- Decline Inquiry -->
             <form :action="`{{ route('admin.inquiries.update-status', ':id') }}`.replace(':id', selectedInquiryId)"
-                method="POST">
+                method="POST" @submit="showActionLoading('Declining reservation...')">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="declined">
@@ -206,7 +206,7 @@
 
             <!-- Cancel Reservation -->
             <form :action="`{{ route('admin.inquiries.update-status', ':id') }}`.replace(':id', selectedInquiryId)"
-                method="POST">
+                method="POST" @submit="showActionLoading('Cancelling reservation...')">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status" value="cancelled">

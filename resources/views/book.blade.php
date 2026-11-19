@@ -537,6 +537,13 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Submitting reservation...',
+                        text: 'Please wait',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
                     const formData = new FormData(bookingForm);
 
                     fetch(bookingForm.action, {
