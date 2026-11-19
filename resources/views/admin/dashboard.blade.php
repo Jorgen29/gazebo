@@ -134,7 +134,7 @@
                                             </span>
                                         </td>
                                         <td class="py-4 px-4 text-right">
-                                            <a href="{{ route('admin.inquiries') }}?status=pending"
+                                            <a href="{{ route('admin.inquiries') }}?highlight_id={{ $inquiry->id }}"
                                                 class="inline-block bg-[#1C3627] hover:bg-[#2e4a3b] text-white px-4 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.18em] transition-all shadow-sm">
                                                 View Details
                                             </a>

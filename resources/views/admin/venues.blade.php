@@ -26,7 +26,7 @@
     <div class="flex min-h-screen">
         <x-admin.sidebar />
 
-        <div class="flex-1 flex flex-col min-w-0 min-h-screen bg-[#FBF9F5]">
+        <div class="flex-1 flex flex-col min-w-0 min-h-screen bg-[#F8F9FA]">
             <x-admin.header />
 
             <main class="p-6 lg:p-8 space-y-6 flex-1 overflow-y-auto">

@@ -1,6 +1,6 @@
 <!-- Admin Sidebar -->
 <aside
-    class="w-72 bg-[#162B20] border-r border-[#d8c7a5]/20 flex flex-col shrink-0 min-h-screen text-white shadow-[0_0_0_1px_rgba(184,148,98,0.08)]">
+    class="hidden lg:flex w-72 bg-[#162B20] border-r border-[#d8c7a5]/20 flex-col shrink-0 min-h-screen text-white shadow-[0_0_0_1px_rgba(184,148,98,0.08)]">
     <div class="h-24 px-6 flex items-center gap-3.5 border-b border-[#d8c7a5]/15">
         <div
             class="w-12 h-12 rounded-xl bg-[#1C3627] border border-[#b89462]/40 text-[#b89462] flex items-center justify-center font-bold text-lg shadow-sm">
